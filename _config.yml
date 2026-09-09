@@ -1,0 +1,19 @@
+title: Contentful + GitHub Pages
+description: A Jekyll site whose content is fetched from Contentful at build time.
+baseurl: ""
+url: ""
+
+markdown: kramdown
+plugins:
+  - jekyll-feed
+
+# Content type id in Contentful that this site pulls entries from.
+# Expected fields: title, slug, body, publishDate
+contentful_content_type: post
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - CLAUDE.md
+  - .env.example
