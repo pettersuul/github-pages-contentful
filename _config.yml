@@ -7,9 +7,18 @@ markdown: kramdown
 plugins:
   - jekyll-feed
 
-# Content type id in Contentful that this site pulls entries from.
-# Expected fields: title, slug, body, publishDate
-contentful_content_type: post
+# Contentful content types this site pulls entries from. Each entry's
+# fields (title, slug, body, and publishDate where relevant) become a
+# generated page at /<dir>/<slug>/ (dir: "" means the site root).
+# Add or remove collections here to adapt this template to a new site
+# without touching the generator plugin.
+contentful_collections:
+  - content_type: post
+    layout: post
+    dir: posts
+  - content_type: page
+    layout: page
+    dir: ""
 
 exclude:
   - Gemfile
