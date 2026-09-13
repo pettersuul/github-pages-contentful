@@ -52,7 +52,7 @@ module ContentfulJekyll
       client = ContentfulClient.build
 
       if client.nil?
-        token_var = ENV["CONTENTFUL_PREVIEW"] == "true" ? "CONTENTFUL_PREVIEW_ACCESS_TOKEN" : "CONTENTFUL_ACCESS_TOKEN"
+        token_var = ContentfulClient.preview? ? "CONTENTFUL_PREVIEW_ACCESS_TOKEN" : "CONTENTFUL_ACCESS_TOKEN"
         Jekyll.logger.warn "Contentful:", "CONTENTFUL_SPACE_ID / #{token_var} not set, skipping content fetch"
         return
       end
@@ -91,13 +91,19 @@ module ContentfulJekyll
     # page per entry -- for entries that are only ever linked to from other
     # entries (e.g. authors, manufacturers) and have no page of their own.
     def fetch_data_collection(site, client, collection)
+      name = collection["name"]
+
+      if site.data.key?(name)
+        Jekyll.logger.warn "Contentful:", "site.data.#{name} already exists (e.g. from a _data/#{name}.* file) and will be overwritten by the '#{collection["content_type"]}' data collection"
+      end
+
       entries = []
 
       each_entry(client, entries_query(collection)) do |entry|
         entries << serialize_entry(entry, 0)
       end
 
-      site.data[collection["name"]] = entries
+      site.data[name] = entries
     end
 
     # Loops through every page of entries for a query, following

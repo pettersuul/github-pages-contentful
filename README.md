@@ -15,7 +15,7 @@ Native GitHub Pages builds run Jekyll in "safe mode," which disables custom plug
    ```
 3. In the GitHub repo settings, add the same three values as Actions secrets (`CONTENTFUL_SPACE_ID`, `CONTENTFUL_ACCESS_TOKEN`, `CONTENTFUL_ENVIRONMENT`), and set Pages source to "GitHub Actions".
 
-To build against draft (unpublished) content instead of only published entries, set `CONTENTFUL_PREVIEW=true` and `CONTENTFUL_PREVIEW_ACCESS_TOKEN` (a separate token from your CDA `CONTENTFUL_ACCESS_TOKEN`, issued in Contentful under the same space).
+To build against draft (unpublished) content instead of only published entries, set `CONTENTFUL_PREVIEW=true` and `CONTENTFUL_PREVIEW_ACCESS_TOKEN` (a separate token from your CDA `CONTENTFUL_ACCESS_TOKEN`, issued in Contentful under the same space). Don't set these in the production deploy workflow's secrets — doing so publishes draft/unpublished content to the live public site.
 
 ## Content model
 

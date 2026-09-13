@@ -28,7 +28,7 @@ The site pulls its content from Contentful at **build time** rather than storing
   - **Known gap**: this Hash-flattening does not run the Rich Text rendering described above — a linked entry's own Rich Text field (e.g. `page.author.bio`) arrives as the raw string-keyed Rich Text Hash, and any assets/entries embedded inside it remain live, unserialized SDK objects. Only the top-level `body` is pre-rendered.
 
   This mirrors how Contentful's own [jekyll-contentful-data-import](https://github.com/contentful/jekyll-contentful-data-import) plugin maps `Contentful::Asset`/`Contentful::Entry`/`Contentful::Link` values (`lib/jekyll-contentful-data-import/mappers/base.rb`), scoped down to just what this template needs (no multi-locale support, no custom per-content-type mappers).
-- **`index.html`** lists generated post pages by filtering `site.pages` for URLs under `/posts/` (posts aren't a Jekyll collection — they're plain generated pages, so `site.posts` won't include them).
+- **`index.html`** lists generated pages by iterating `contentful_collections` from `_config.yml` and, for each collection with a non-empty `dir`, filtering `site.pages` for URLs under `/<dir>/` — so a new collection with a `dir` automatically gets a homepage section with no template changes (posts aren't a Jekyll collection — they're plain generated pages, so `site.posts` won't include them).
 - **`_layouts/default.html`** builds a nav from every generated page with `layout: page`, sorted by title — so any `page`-collection entry (About, Contact, etc.) automatically appears in site navigation.
 
 ### Why GitHub Actions instead of native GitHub Pages builds
