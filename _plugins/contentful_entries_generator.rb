@@ -77,10 +77,9 @@ module ContentfulJekyll
     # Maps content_type id -> snake_cased field name of Contentful's own
     # "Entry title" setting (a content type's displayField). page.title
     # (and a linked/data-collection entry's own "title") always comes
-    # from this field, whatever it's actually named (e.g. a "product"
-    # entry is titled by its displayField "productShortName") -- see
-    # flatten_fields below. There's no need for a content type to have a
-    # field literally called `title`.
+    # from this field, whatever it's actually named (e.g. `headline` or
+    # `eventName`) -- see flatten_fields below. There's no need for a
+    # content type to have a field literally called `title`.
     def fetch_display_fields(client)
       client.content_types(limit: MAX_PAGE_SIZE).each_with_object({}) do |content_type, fields|
         next if content_type.display_field.nil?
