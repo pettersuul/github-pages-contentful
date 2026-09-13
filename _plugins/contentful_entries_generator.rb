@@ -52,7 +52,8 @@ module ContentfulJekyll
       client = ContentfulClient.build
 
       if client.nil?
-        Jekyll.logger.warn "Contentful:", "CONTENTFUL_SPACE_ID / CONTENTFUL_ACCESS_TOKEN not set, skipping content fetch"
+        token_var = ENV["CONTENTFUL_PREVIEW"] == "true" ? "CONTENTFUL_PREVIEW_ACCESS_TOKEN" : "CONTENTFUL_ACCESS_TOKEN"
+        Jekyll.logger.warn "Contentful:", "CONTENTFUL_SPACE_ID / #{token_var} not set, skipping content fetch"
         return
       end
 
