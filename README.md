@@ -37,7 +37,7 @@ contentful_collections:
 - `dir` — URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`)
 - `nav` — optional; set `true` to list this collection's pages in the site nav (see `_layouts/default.html`)
 
-Every content type is expected to have `title`, `slug`, and `body` fields; `post` additionally uses `publishDate` for ordering. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
+Every content type is expected to have `slug` and `body` fields; `post` additionally uses `publishDate` for ordering. `title` always comes from that content type's Contentful-configured "Entry title" field (set per content type in Contentful's UI), whatever it's actually named — so e.g. a "product" type titled by `productShortName` works without any template changes, and content types don't need a field literally called `title`. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
 
 Some content types are only ever referenced from other entries and never need a page/URL of their own (e.g. an "author" or "manufacturer" linked from posts/products). List those under `contentful_data_collections` instead, and they're fetched into `site.data.<name>` rather than generating pages:
 

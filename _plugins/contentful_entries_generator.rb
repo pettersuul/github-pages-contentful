@@ -57,6 +57,8 @@ module ContentfulJekyll
         return
       end
 
+      @display_fields = fetch_display_fields(client)
+
       collections = site.config["contentful_collections"] || []
 
       collections.each do |collection|
@@ -71,6 +73,21 @@ module ContentfulJekyll
     end
 
     private
+
+    # Maps content_type id -> snake_cased field name of Contentful's own
+    # "Entry title" setting (a content type's displayField). page.title
+    # (and a linked/data-collection entry's own "title") always comes
+    # from this field, whatever it's actually named (e.g. a "product"
+    # entry is titled by its displayField "productShortName") -- see
+    # flatten_fields below. There's no need for a content type to have a
+    # field literally called `title`.
+    def fetch_display_fields(client)
+      client.content_types(limit: MAX_PAGE_SIZE).each_with_object({}) do |content_type, fields|
+        next if content_type.display_field.nil?
+
+        fields[content_type.id] = Contentful::Support.snakify(content_type.display_field)
+      end
+    end
 
     def entries_query(collection)
       {
@@ -197,11 +214,16 @@ module ContentfulJekyll
     # Shared by build_page (top-level page fields) and serialize_entry
     # (a linked entry's own fields) so the flattening rule lives in one place.
     def flatten_fields(entry, depth, skip: [])
-      entry.fields.each_with_object({}) do |(name, value), data|
+      data = entry.fields.each_with_object({}) do |(name, value), data|
         next if skip.include?(name)
 
         data[name.to_s] = serialize_field(value, depth)
       end
+
+      display_field = @display_fields[entry.sys[:content_type]&.id]
+      data["title"] = data[display_field] if display_field
+
+      data
     end
 
     def reference_stub(id, link_type)
