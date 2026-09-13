@@ -9,7 +9,8 @@ require "contentful"
 module ContentfulClient
   def self.build
     space = ENV["CONTENTFUL_SPACE_ID"]
-    token = ENV["CONTENTFUL_ACCESS_TOKEN"]
+    preview = ENV["CONTENTFUL_PREVIEW"] == "true"
+    token = preview ? ENV["CONTENTFUL_PREVIEW_ACCESS_TOKEN"] : ENV["CONTENTFUL_ACCESS_TOKEN"]
     environment = ENV["CONTENTFUL_ENVIRONMENT"] || "master"
 
     return nil if space.nil? || token.nil?
@@ -17,7 +18,8 @@ module ContentfulClient
     Contentful::Client.new(
       space: space,
       access_token: token,
-      environment: environment
+      environment: environment,
+      api_url: preview ? "preview.contentful.com" : "cdn.contentful.com"
     )
   end
 end

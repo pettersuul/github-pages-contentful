@@ -15,6 +15,8 @@ Native GitHub Pages builds run Jekyll in "safe mode," which disables custom plug
    ```
 3. In the GitHub repo settings, add the same three values as Actions secrets (`CONTENTFUL_SPACE_ID`, `CONTENTFUL_ACCESS_TOKEN`, `CONTENTFUL_ENVIRONMENT`), and set Pages source to "GitHub Actions".
 
+To build against draft (unpublished) content instead of only published entries, set `CONTENTFUL_PREVIEW=true` and `CONTENTFUL_PREVIEW_ACCESS_TOKEN` (a separate token from your CDA `CONTENTFUL_ACCESS_TOKEN`, issued in Contentful under the same space).
+
 ## Content model
 
 The build reads the `contentful_collections` list in [_config.yml](_config.yml) and generates one page per Contentful entry per collection — this is the extension point for adapting the template to a new site:
@@ -34,6 +36,14 @@ contentful_collections:
 - `dir` — URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`)
 
 Every content type is expected to have `title`, `slug`, and `body` fields; `post` additionally uses `publishDate` for ordering. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed. Pages generated with `layout: page` automatically appear in the site nav (see `_layouts/default.html`).
+
+Some content types are only ever referenced from other entries and never need a page/URL of their own (e.g. an "author" or "manufacturer" linked from posts/products). List those under `contentful_data_collections` instead, and they're fetched into `site.data.<name>` rather than generating pages:
+
+```yaml
+contentful_data_collections:
+  - content_type: author
+    name: authors
+```
 
 ## Using this repo as a template
 

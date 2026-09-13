@@ -20,6 +20,13 @@ contentful_collections:
     layout: page
     dir: ""
 
+# Content types fetched into site.data.<name> instead of generated pages --
+# for entries that are only ever linked to from other entries (e.g. authors,
+# manufacturers) and have no page of their own.
+# contentful_data_collections:
+#   - content_type: author
+#     name: authors
+
 exclude:
   - Gemfile
   - Gemfile.lock

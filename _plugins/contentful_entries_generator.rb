@@ -61,21 +61,42 @@ module ContentfulJekyll
       collections.each do |collection|
         fetch_collection(site, client, collection)
       end
+
+      data_collections = site.config["contentful_data_collections"] || []
+
+      data_collections.each do |collection|
+        fetch_data_collection(site, client, collection)
+      end
     end
 
     private
 
-    def fetch_collection(site, client, collection)
-      query = {
+    def entries_query(collection)
+      {
         content_type: collection["content_type"],
         order: "-sys.updatedAt",
         include: INCLUDE_DEPTH,
         limit: MAX_PAGE_SIZE
       }
+    end
 
-      each_entry(client, query) do |entry|
+    def fetch_collection(site, client, collection)
+      each_entry(client, entries_query(collection)) do |entry|
         site.pages << build_page(site, entry, collection)
       end
+    end
+
+    # Fetches a content type into site.data.<name> instead of generating a
+    # page per entry -- for entries that are only ever linked to from other
+    # entries (e.g. authors, manufacturers) and have no page of their own.
+    def fetch_data_collection(site, client, collection)
+      entries = []
+
+      each_entry(client, entries_query(collection)) do |entry|
+        entries << serialize_entry(entry, 0)
+      end
+
+      site.data[collection["name"]] = entries
     end
 
     # Loops through every page of entries for a query, following
