@@ -29,7 +29,7 @@ The site pulls its content from Contentful at **build time** rather than storing
 
   This mirrors how Contentful's own [jekyll-contentful-data-import](https://github.com/contentful/jekyll-contentful-data-import) plugin maps `Contentful::Asset`/`Contentful::Entry`/`Contentful::Link` values (`lib/jekyll-contentful-data-import/mappers/base.rb`), scoped down to just what this template needs (no multi-locale support, no custom per-content-type mappers).
 - **`index.html`** lists generated pages by iterating `contentful_collections` from `_config.yml` and, for each collection with a non-empty `dir`, filtering `site.pages` for URLs under `/<dir>/` — so a new collection with a `dir` automatically gets a homepage section with no template changes (posts aren't a Jekyll collection — they're plain generated pages, so `site.posts` won't include them).
-- **`_layouts/default.html`** builds a nav from every generated page with `layout: page`, sorted by title — so any `page`-collection entry (About, Contact, etc.) automatically appears in site navigation.
+- **`_layouts/default.html`** builds a nav from every generated page whose collection has `nav: true` set in `_config.yml` (the generator copies that onto `page.data["nav"]`), sorted by title — so marking a collection `nav: true` (e.g. the root-level `page` collection: About, Contact, etc.) is what puts its entries in site navigation, independent of which layout they use.
 
 ### Why GitHub Actions instead of native GitHub Pages builds
 

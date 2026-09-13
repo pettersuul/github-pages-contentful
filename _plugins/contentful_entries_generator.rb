@@ -127,12 +127,8 @@ module ContentfulJekyll
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
       page.content = render_body(site, entry.fields[:body])
       page.data["layout"] = collection["layout"]
-
-      entry.fields.each do |name, value|
-        next if name == :body
-
-        page.data[name.to_s] = serialize_field(value)
-      end
+      page.data["nav"] = true if collection["nav"]
+      page.data.merge!(flatten_fields(entry, 0, skip: [:body]))
 
       page
     end
@@ -158,7 +154,7 @@ module ContentfulJekyll
     end
 
     def markdown_converter(site)
-      site.find_converter_instance(Jekyll::Converters::Markdown)
+      @markdown_converter ||= site.find_converter_instance(Jekyll::Converters::Markdown)
     end
 
     # Recursively converts SDK objects (Contentful::Asset, Contentful::Entry,
@@ -194,13 +190,18 @@ module ContentfulJekyll
     # Flattens a linked entry's fields the same way build_page flattens
     # top-level fields, so `{{ page.author.title }}` works directly.
     def serialize_entry(entry, depth)
-      data = { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
+      { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
+        .merge(flatten_fields(entry, depth + 1))
+    end
 
-      entry.fields.each do |name, value|
-        data[name.to_s] = serialize_field(value, depth + 1)
+    # Shared by build_page (top-level page fields) and serialize_entry
+    # (a linked entry's own fields) so the flattening rule lives in one place.
+    def flatten_fields(entry, depth, skip: [])
+      entry.fields.each_with_object({}) do |(name, value), data|
+        next if skip.include?(name)
+
+        data[name.to_s] = serialize_field(value, depth)
       end
-
-      data
     end
 
     def reference_stub(id, link_type)

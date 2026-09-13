@@ -9,7 +9,7 @@
   <header>
     <a href="{{ '/' | relative_url }}">{{ site.title }}</a>
     <nav>
-      {% assign nav_pages = site.pages | where: "layout", "page" | sort: "title" %}
+      {% assign nav_pages = site.pages | where: "nav", true | sort: "title" %}
       {% for p in nav_pages %}
         <a href="{{ p.url | relative_url }}">{{ p.title }}</a>
       {% endfor %}
