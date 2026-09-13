@@ -36,6 +36,9 @@ contentful_collections:
 - `layout` — which layout in [_layouts/](_layouts/) renders the page
 - `dir` — URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`)
 - `nav` — optional; set `true` to list this collection's pages in the site nav (see `_layouts/default.html`)
+- `order` — optional; a [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`
+
+An entry's `slug` field is sanitized into a URL-safe form (lowercased, spaces/punctuation replaced) if it isn't one already — a build warning is logged when this happens, so messy slugs in Contentful are visible without breaking the build.
 
 Every content type is expected to have `slug` and `body` fields; `post` additionally uses `publishDate` for ordering. `title` always comes from that content type's Contentful-configured "Entry title" field (set per content type in Contentful's UI), whatever it's actually named — so e.g. a "product" type titled by `productShortName` works without any template changes, and content types don't need a field literally called `title`. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
 

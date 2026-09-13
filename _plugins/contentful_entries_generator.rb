@@ -92,7 +92,7 @@ module ContentfulJekyll
     def entries_query(collection)
       {
         content_type: collection["content_type"],
-        order: "-sys.updatedAt",
+        order: collection["order"] || "-sys.updatedAt",
         include: INCLUDE_DEPTH,
         limit: MAX_PAGE_SIZE
       }
@@ -139,7 +139,7 @@ module ContentfulJekyll
     end
 
     def build_page(site, entry, collection)
-      dir = [collection["dir"], entry.fields[:slug]].reject { |part| part.nil? || part.to_s.empty? }.join("/")
+      dir = [collection["dir"], sanitized_slug(entry)].reject { |part| part.nil? || part.to_s.empty? }.join("/")
 
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
       page.content = render_body(site, entry.fields[:body])
@@ -148,6 +148,24 @@ module ContentfulJekyll
       page.data.merge!(flatten_fields(entry, 0, skip: [:body]))
 
       page
+    end
+
+    # Content editors will eventually type a slug with spaces, capitals, or
+    # other characters that aren't safe verbatim in a URL path. Reuses
+    # Jekyll's own slugify (the same normalization Jekyll applies to post
+    # filenames/permalinks) rather than leaving a raw field value to become
+    # the page's URL unchanged.
+    def sanitized_slug(entry)
+      raw_slug = entry.fields[:slug]
+      return raw_slug if raw_slug.nil?
+
+      slug = Jekyll::Utils.slugify(raw_slug.to_s)
+
+      if slug != raw_slug.to_s
+        Jekyll.logger.warn "Contentful:", "slug \"#{raw_slug}\" (entry #{entry.sys[:id]}) isn't URL-safe, using \"#{slug}\" instead"
+      end
+
+      slug
     end
 
     # `body` can arrive as a Rich Text document (Hash), a plain/Markdown

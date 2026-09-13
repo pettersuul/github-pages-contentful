@@ -8,10 +8,13 @@ plugins:
   - jekyll-feed
 
 # Contentful content types this site pulls entries from. Each entry's
-# fields (title, slug, body, and publishDate where relevant) become a
-# generated page at /<dir>/<slug>/ (dir: "" means the site root). Set
-# nav: true on a collection to list its pages in the site nav (see
-# _layouts/default.html).
+# fields (slug, body, and publishDate where relevant) become a generated
+# page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
+# into a URL-safe form if needed). Set nav: true on a collection to list
+# its pages in the site nav (see _layouts/default.html). Set order to a
+# Contentful CDA order value (e.g. "fields.publishDate" or
+# "-fields.publishDate") to control fetch/display order; defaults to
+# "-sys.updatedAt".
 # Add or remove collections here to adapt this template to a new site
 # without touching the generator plugin.
 contentful_collections:
