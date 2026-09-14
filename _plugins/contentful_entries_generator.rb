@@ -60,6 +60,7 @@ module ContentfulJekyll
 
       @display_fields = fetch_display_fields(client)
       @built_dirs = Set.new
+      @entry_cache = {}
 
       collections = site.config["contentful_collections"] || []
 
@@ -149,7 +150,7 @@ module ContentfulJekyll
     end
 
     def build_page(site, entry, collection)
-      dir = [collection["dir"], sanitized_slug(entry)].reject { |part| part.nil? || part.to_s.empty? }.join("/")
+      dir = [collection["dir"], sanitized_slug(entry)].compact.reject(&:empty?).join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
@@ -238,8 +239,13 @@ module ContentfulJekyll
 
     # Flattens a linked entry's fields the same way build_page flattens
     # top-level fields, so `{{ page.author.title }}` works directly.
+    # Memoized per (entry, depth): the same entry can be linked from many
+    # pages (e.g. a shared "author"), and Contentful's `includes` list is
+    # already deduplicated -- no need to re-flatten it once per occurrence.
+    # The resulting Hash is shared by reference across those occurrences;
+    # fine since nothing downstream mutates it, only reads it in Liquid.
     def serialize_entry(entry, depth)
-      { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
+      @entry_cache[[entry.sys[:id], depth]] ||= { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
         .merge(flatten_fields(entry, depth + 1))
     end
 

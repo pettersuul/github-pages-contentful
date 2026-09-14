@@ -11,7 +11,8 @@ plugins:
 # fields (slug, body, and publishDate where relevant) become a generated
 # page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
 # into a URL-safe form if needed). Set nav: true on a collection to list
-# its pages in the site nav (see _layouts/default.html). Set order to a
+# its pages in the site nav (see _layouts/default.html), and home: true
+# to list them on the homepage (see index.html). Set order to a
 # Contentful CDA order value (e.g. "fields.publishDate" or
 # "-fields.publishDate") to control fetch/display order; defaults to
 # "-sys.updatedAt".
@@ -21,6 +22,7 @@ contentful_collections:
   - content_type: post
     layout: post
     dir: posts
+    home: true
   - content_type: page
     layout: page
     dir: ""
