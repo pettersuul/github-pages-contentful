@@ -92,7 +92,7 @@ module ContentfulJekyll
 
     def fetch_collection(site, client, collection, locale)
       body_field = (collection["body_field"] || "body").to_sym
-      home_label = home_label_for(collection) if collection["home"]
+      home_label = home_label_for(collection, locale) if collection["home"]
       collection_dir = ContentfulJekyll.dir_for(collection, locale)
 
       each_entry(client, entries_query(collection, locale)) do |entry|
@@ -100,12 +100,21 @@ module ContentfulJekyll
       end
     end
 
-    # A collection's homepage section heading: an explicit `label`, or a
-    # humanized form of its content_type id (e.g. "newsArticle" ->
-    # "News Article") via the same snake_casing contentful.rb itself uses
-    # for field names, rather than the raw id capitalized as-is.
-    def home_label_for(collection)
-      collection["label"] || Contentful::Support.snakify(collection["content_type"]).split("_").map(&:capitalize).join(" ")
+    # A collection's homepage section heading: an explicit `label` (a plain
+    # string, used as-is for every locale, or -- mirroring `dir`'s
+    # per-locale Hash escape hatch -- a Hash keyed by locale code for a
+    # translated heading per locale), or a humanized form of its
+    # content_type id (e.g. "newsArticle" -> "News Article") via the same
+    # snake_casing contentful.rb itself uses for field names, rather than
+    # the raw id capitalized as-is. Unlike `dir_for`, a locale missing from
+    # a `label` Hash falls back to the humanized default rather than
+    # raising -- an untranslated heading is a real but non-breaking gap,
+    # not a broken URL.
+    def home_label_for(collection, locale)
+      label = collection["label"]
+      label = label[locale.code] if label.is_a?(Hash)
+
+      label || Contentful::Support.snakify(collection["content_type"]).split("_").map(&:capitalize).join(" ")
     end
 
     # Fetches a content type into site.data.<name> instead of generating a

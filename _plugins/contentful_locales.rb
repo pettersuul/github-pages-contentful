@@ -26,12 +26,16 @@ module ContentfulJekyll
 
   # Yields one Locale per entry in a contentful_locales config value
   # (site.config["contentful_locales"]), first = primary. When `configured`
-  # is nil (contentful_locales isn't set at all), yields a single
-  # Locale.new(nil, nil) -- every query, URL, and site.data key this
-  # produces is byte-identical to a build with no locale support at all,
-  # which is the whole point: single-locale sites (the common case, and
-  # every site this template has been tested against so far) never
-  # exercise any of this machinery. A *configured* single-entry list (e.g.
+  # is nil or empty (contentful_locales isn't set at all, or is set to []),
+  # yields a single Locale.new(nil, nil) -- every query, URL, and site.data
+  # key this produces is byte-identical to a build with no locale support
+  # at all, which is the whole point: single-locale sites (the common
+  # case, and every site this template has been tested against so far)
+  # never exercise any of this machinery. Without the `.empty?` check, an
+  # explicit `contentful_locales: []` would fall through to iterating zero
+  # entries -- silently fetching nothing at all instead of falling back to
+  # this default single pass, with no warning and a build that still exits
+  # 0. A *configured* single-entry list (e.g.
   # contentful_locales: [nb-NO]) does NOT collapse to that same nil-code
   # path -- it still sends an explicit locale: nb-NO on every query, so a
   # deliberately named locale is never silently swapped for whatever the
@@ -46,7 +50,7 @@ module ContentfulJekyll
   # silent answer: a space with both en-US and en-GB configured can't
   # shorten both to "en".
   def self.each_locale(configured)
-    if configured.nil?
+    if configured.nil? || configured.empty?
       yield Locale.new(nil, nil)
       return
     end

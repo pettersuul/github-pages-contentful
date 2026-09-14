@@ -31,6 +31,7 @@ contentful_collections:
     layout: single
     dir: posts
     home: true
+    order: "-fields.publishDate"
   - content_type: page
     layout: single
     dir: ""
@@ -44,7 +45,7 @@ contentful_collections:
 | `dir` | yes | URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`). With `contentful_locales` configured, `dir` can be a Hash keyed by locale code (`{en-US: products, nb-NO: produkter}`) instead of one string, if the path segment itself should be translated too, not just prefixed with the locale — see Locales below. |
 | `nav` | no | `true` lists this collection's pages in the site nav (see `_layouts/default.html`). |
 | `home` | no | `true` groups this collection's pages into a section on the homepage (see `index.html`). |
-| `label` | no | Homepage section heading for this collection, if `home` is set. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article"). |
+| `label` | no | Homepage section heading for this collection, if `home` is set. A plain string, or a Hash keyed by locale code (mirroring `dir`) for a translated heading per locale. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article") for any locale without one. |
 | `order` | no | A [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`. |
 | `body_field` | no | The field to render as page content, if not `body`. A field literally named `content` collides with Jekyll's own reserved `page.content`/`{{ content }}` and is otherwise unreachable, so this is the only way to use such a field as the page body. |
 
