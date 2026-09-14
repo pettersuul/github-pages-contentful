@@ -42,10 +42,14 @@ contentful_collections:
 # every query, URL, and site.data key is then identical to not having
 # this setting at all. With 2+ locales, the first is the primary locale
 # (unprefixed URLs, e.g. /products/vin/, and unsuffixed site.data keys);
-# every other locale gets its own /<locale>/... URL prefix (e.g.
-# /nb-NO/products/vin/) and a site.data.<name>_<locale> key (e.g.
+# every other locale gets its own /<prefix>/... URL prefix (e.g.
+# /nb-NO/products/vin/) and a site.data.<name>_<prefix> key (e.g.
 # site.data.authors_nb_no). Locale codes are whatever Contentful uses
-# for that space (Settings > Locales).
+# for that space (Settings > Locales). An entry can be a bare code
+# (prefix == code, as below) or {code:, prefix:} for a shorter/different
+# URL prefix, e.g. {code: nb-NO, prefix: "no"} -- quote a prefix that
+# could look like a YAML boolean (no/yes/on/off), or it silently
+# becomes true/false instead of that string.
 # contentful_locales:
 #   - en-US
 #   - nb-NO

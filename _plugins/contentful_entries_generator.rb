@@ -56,10 +56,19 @@ module ContentfulJekyll
 
     # Yields one Locale per entry in contentful_locales, first = primary
     # (unprefixed URLs/site.data keys, no page.data["locale"]), the rest
-    # prefixed with their own code. When contentful_locales is unset or has
-    # only one entry, yields a single Locale.new(nil, nil, nil) -- every
-    # query, URL, and site.data key this produces is byte-identical to a
-    # build with no locale support at all.
+    # prefixed with their own code by default. When contentful_locales is
+    # unset or has only one entry, yields a single Locale.new(nil, nil, nil)
+    # -- every query, URL, and site.data key this produces is byte-identical
+    # to a build with no locale support at all.
+    #
+    # An entry is either a plain locale code ("nb-NO", prefix == code) or a
+    # {code:, prefix:} Hash for when the URL/site.data prefix should be
+    # something other than the full Contentful locale code -- e.g.
+    # {code: nb-NO, prefix: no} for a shorter URL. Explicit rather than
+    # automatic (say, deriving "no" from "nb-NO"'s region subtag) because an
+    # automatic shortening scheme has a real collision case with no good
+    # silent answer: a space with both en-US and en-GB configured can't
+    # shorten both to "en".
     def each_locale(site)
       configured = site.config["contentful_locales"]
 
@@ -68,9 +77,29 @@ module ContentfulJekyll
         return
       end
 
-      configured.each_with_index do |code, index|
-        yield index.zero? ? Locale.new(code, nil, nil) : Locale.new(code, code, code.downcase.tr("-", "_"))
+      configured.each_with_index do |entry, index|
+        code, prefix = locale_code_and_prefix(entry)
+        yield index.zero? ? Locale.new(code, nil, nil) : Locale.new(code, prefix, prefix.downcase.tr("-", "_"))
       end
+    end
+
+    def locale_code_and_prefix(entry)
+      return [entry, entry] unless entry.is_a?(Hash)
+
+      code = entry["code"] || raise("contentful_locales: entry is missing \"code\": #{entry.inspect}")
+      prefix = entry.fetch("prefix", code)
+
+      # YAML reads a bare no/yes/on/off as a boolean, not the string it
+      # looks like -- exactly the trap a `prefix: no` (Norwegian) would
+      # fall into. Almost certainly a mistake, not an intentional
+      # true/false prefix, so fail loudly with the fix rather than
+      # silently using `code` instead.
+      if [true, false].include?(prefix)
+        raise "contentful_locales: prefix for #{code} parsed as the boolean #{prefix.inspect}, not a string -- " \
+              "quote it in _config.yml (e.g. prefix: \"no\")"
+      end
+
+      [code, prefix]
     end
 
     # Maps content_type id -> snake_cased field name of Contentful's own
@@ -161,7 +190,7 @@ module ContentfulJekyll
     end
 
     def build_page(site, entry, collection, body_field, home_label, locale)
-      dir = [locale.url_prefix, collection["dir"], sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
+      dir = [locale.url_prefix, dir_for(collection, locale), sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
@@ -176,6 +205,20 @@ module ContentfulJekyll
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
 
       page
+    end
+
+    # A collection's `dir` is usually one string, used for every locale --
+    # but the URL path segment itself (unlike the locale-code prefix
+    # each_locale already adds) often needs to be a different word per
+    # locale (e.g. "produkter" vs "products"). Set `dir` to a Hash keyed
+    # by locale code for that; anything else (a plain string, including
+    # "") is used as-is regardless of locale, exactly as before this was
+    # possible.
+    def dir_for(collection, locale)
+      dir = collection["dir"]
+      return dir unless dir.is_a?(Hash)
+
+      dir[locale.code] || raise("contentful_collections: dir has no entry for locale #{locale.code.inspect} (content_type: #{collection["content_type"]})")
     end
 
     # Content editors will eventually type a slug with spaces, capitals, or

@@ -41,7 +41,7 @@ contentful_collections:
 | --- | --- | --- |
 | `content_type` | yes | The Contentful content type id to fetch. |
 | `layout` | yes | Which layout in [_layouts/](_layouts/) renders the page. |
-| `dir` | yes | URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`). |
+| `dir` | yes | URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`). With `contentful_locales` configured, `dir` can be a Hash keyed by locale code (`{en-US: products, nb-NO: produkter}`) instead of one string, if the path segment itself should be translated too, not just prefixed with the locale — see Locales below. |
 | `nav` | no | `true` lists this collection's pages in the site nav (see `_layouts/default.html`). |
 | `home` | no | `true` groups this collection's pages into a section on the homepage (see `index.html`). |
 | `label` | no | Homepage section heading for this collection, if `home` is set. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article"). |
@@ -90,7 +90,22 @@ contentful_locales:
   - nb-NO
 ```
 
-The primary locale's URLs and `site.data` keys are unprefixed, exactly as if `contentful_locales` weren't set at all — adding a second locale to an existing single-locale site never changes its existing URLs. Every other locale gets its own `/<locale>/...` URL prefix (`/nb-NO/products/vin/`) and its own suffixed `site.data.<name>_<locale>` key (`site.data.authors_nb_no`), fetched and rendered entirely separately — a linked entry resolves to that locale's own translated fields, not the primary locale's. The homepage (`index.html`) only ever shows the primary locale's content; a fully localized homepage needs its own `index.html` per locale (e.g. `nb-NO/index.html`), following the same pattern. The nav in `_layouts/default.html` automatically scopes itself to whichever locale the page currently being rendered belongs to.
+By default a non-primary locale's URL/`site.data` prefix is its full Contentful code (`/nb-NO/...`). For a shorter or different prefix, use the Hash form instead of a bare code:
+
+```yaml
+contentful_locales:
+  - en-US
+  - code: nb-NO
+    prefix: "no"
+```
+
+**Quote a `prefix` if it could look like a YAML boolean** — `no`, `yes`, `on`, `off` (any case) parse as `true`/`false`, not the string you meant, if left bare. Unquoted `prefix: no` silently becomes `prefix: false`; the build catches this specific case and fails with a clear message rather than silently falling back to the full locale code.
+
+The primary locale's URLs and `site.data` keys are unprefixed, exactly as if `contentful_locales` weren't set at all — adding a second locale to an existing single-locale site never changes its existing URLs (as long as the locale you're already using stays first in the list). Every other locale gets its own `/<locale>/...` URL prefix (`/nb-NO/products/vin/`) and its own suffixed `site.data.<name>_<locale>` key (`site.data.authors_nb_no`), fetched and rendered entirely separately — a linked entry resolves to that locale's own translated fields, not the primary locale's. The homepage (`index.html`) only ever shows the primary locale's content; a fully localized homepage needs its own `index.html` per locale (e.g. `nb-NO/index.html`), following the same pattern. The nav in `_layouts/default.html` automatically scopes itself to whichever locale the page currently being rendered belongs to.
+
+The locale prefix only affects the URL segment `each_locale` adds — the `dir` segment itself (e.g. "products") stays whatever you configured, in every locale, unless you make it a per-locale Hash (see the `dir` row above): `dir: products` gives `/products/vin/` (primary) and `/nb-NO/products/vin/` (secondary) — same word, just prefixed. `dir: {en-US: products, nb-NO: produkter}` gives `/products/vin/` and `/nb-NO/produkter/vin/` — a genuinely translated path, not just a translated prefix.
+
+A locale code has to already exist in your Contentful space (Settings → Locales) before you can build against it — the CDA rejects an unrecognized code outright ("Unknown locale") rather than falling back to anything, so add the locale in Contentful first, then add it to `contentful_locales`.
 
 ## Using this repo as a template
 
