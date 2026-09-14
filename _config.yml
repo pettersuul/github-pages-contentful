@@ -3,8 +3,6 @@ description: A Jekyll site whose content is fetched from Contentful at build tim
 baseurl: ""
 url: ""
 
-markdown: kramdown
-
 # Contentful content types this site pulls entries from. Each entry's
 # fields (slug, body, and publishDate where relevant) become a generated
 # page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
