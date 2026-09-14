@@ -124,7 +124,7 @@ module ContentfulJekyll
     end
 
     def build_page(site, entry, collection, body_field, home_label)
-      dir = [collection["dir"], sanitized_slug(entry)].compact.reject { |part| part.to_s.empty? }.join("/")
+      dir = [collection["dir"], sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"

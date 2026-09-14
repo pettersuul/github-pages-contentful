@@ -7,7 +7,7 @@ Native GitHub Pages builds run Jekyll in "safe mode," which disables custom plug
 ## Setup
 
 1. Install dependencies: `bundle install`
-2. Copy `.env.example` to `.env` and fill in your Contentful credentials:
+2. Copy `.env.example` to `.env` and fill in your Contentful credentials (in Contentful: Settings → API keys → add or open an API key for a Content Delivery API token; the space ID is on the same page):
    ```
    CONTENTFUL_SPACE_ID=
    CONTENTFUL_ACCESS_TOKEN=
@@ -57,6 +57,18 @@ Every content type needs a `slug` field and a body field (`body` by default — 
 An entry's `slug` field is sanitized into a URL-safe form (lowercased, spaces/punctuation replaced) if it isn't one already, with a build warning logged when this happens — so messy slugs in Contentful stay visible without breaking the build.
 
 To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
+
+### Available data in layouts
+
+Every field on an entry (other than its body field, which becomes `content`/`{{ content }}`) is available on `page` by its snake_cased field ID — a Contentful field `coverImage` becomes `page.cover_image`, with no config or Ruby changes needed to reference a new field. A few field types need a bit more than `{{ page.some_field }}`:
+
+- **`page.title`** — always available, regardless of what the title field is actually called in Contentful (see above).
+- **Asset fields** (an image, file, etc.) become `{ "url", "content_type", "title", "description" }`: `<img src="{{ page.cover_image.url }}" alt="{{ page.cover_image.title }}">`.
+- **Reference fields** (a link to another entry) become that entry's own fields, flattened the same way — `{{ page.author.title }}`, `{{ page.author.email }}`, etc. work directly, one level deep by default (see `contentful_entry_depth` above for content models with deeper reference chains).
+- **Array fields** (multiple values, or multiple references) become a Liquid array — loop with `{% for tag in page.tags %}{{ tag }}{% endfor %}`, or `{% for related in page.related_posts %}{{ related.title }}{% endfor %}` for an array of references.
+- A reference field whose linked entry has its own Rich Text field does **not** get that field pre-rendered to HTML (only a page's own top-level body field is) — it arrives as a raw Rich Text document, not usable directly in a layout without extra work.
+
+`_layouts/single.html` + `_includes/article.html` is the simplest example: a title, an optional date (only shown when the entry actually has one), and the rendered body. Copy that pattern for a new content type's layout, or write something entirely different — Jekyll layouts are plain Liquid/HTML.
 
 ### Data-only collections
 

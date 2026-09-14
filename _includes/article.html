@@ -1,3 +1,11 @@
+{% comment %}
+  publish_date only renders when the current page actually has one (the
+  default post collection's publishDate field) -- a collection without
+  it just shows no date, same as any other optional field. Give a
+  collection its own layout instead of adding to this shared include
+  once it needs a genuinely different structure, not just another
+  optional field.
+{% endcomment %}
 <article>
   <h1>{{ page.title }}</h1>
   {% if page.publish_date %}<time>{{ page.publish_date }}</time>{% endif %}
