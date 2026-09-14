@@ -7,7 +7,7 @@ title: Home
 <p>{{ site.description }}</p>
 
 {% for collection in site.contentful_collections %}
-  {% if collection.home %}
+  {% if collection.home and collection.dir and collection.dir != "" %}
     {% assign dir_segment = "/" | append: collection.dir | append: "/" %}
     {% assign collection_pages = site.pages | where_exp: "p", "p.url contains dir_segment" %}
     <h2>{{ collection.content_type | capitalize }}</h2>

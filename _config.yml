@@ -12,7 +12,8 @@ plugins:
 # page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
 # into a URL-safe form if needed). Set nav: true on a collection to list
 # its pages in the site nav (see _layouts/default.html), and home: true
-# to list them on the homepage (see index.html). Set order to a
+# to list them on the homepage (see index.html; only works with a
+# non-empty dir -- a no-op on a dir: "" collection). Set order to a
 # Contentful CDA order value (e.g. "fields.publishDate" or
 # "-fields.publishDate") to control fetch/display order; defaults to
 # "-sys.updatedAt". Set body_field if the field to render as page content

@@ -37,13 +37,13 @@ contentful_collections:
 - `layout` — which layout in [_layouts/](_layouts/) renders the page
 - `dir` — URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`)
 - `nav` — optional; set `true` to list this collection's pages in the site nav (see `_layouts/default.html`)
-- `home` — optional; set `true` to list this collection's pages in a section on the homepage (see `index.html`)
+- `home` — optional; set `true` to list this collection's pages in a section on the homepage (see `index.html`). Only works for a collection with a non-empty `dir`; has no effect on a `dir: ""` (root-level) collection.
 - `order` — optional; a [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`
 - `body_field` — optional; the field to render as page content, if not `body`. Note that a field named `content` collides with Jekyll's own reserved `page.content`/`{{ content }}` and becomes unreachable any other way, so this is the only way to use such a field as the page body.
 
 An entry's `slug` field is sanitized into a URL-safe form (lowercased, spaces/punctuation replaced) if it isn't one already — a build warning is logged when this happens, so messy slugs in Contentful are visible without breaking the build.
 
-Every content type is expected to have `slug` and `body` fields; `post` additionally uses `publishDate` for ordering. `title` always comes from that content type's Contentful-configured "Entry title" field (set per content type in Contentful's UI), whatever it's actually named — so a content type whose title field is called something else entirely (e.g. `headline` or `eventName`) works without any template changes, and content types don't need a field literally called `title`. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
+Every content type is expected to have `slug` and a body field (`body` by default, see `body_field` above); `post` additionally uses `publishDate` for ordering. `title` always comes from that content type's Contentful-configured "Entry title" field (set per content type in Contentful's UI), whatever it's actually named — so a content type whose title field is called something else entirely (e.g. `headline` or `eventName`) works without any template changes, and content types don't need a field literally called `title`. To add a new content type (e.g. a "product" or "event"), add an entry to `contentful_collections` and a matching layout — no changes to the generator plugin are needed.
 
 Some content types are only ever referenced from other entries and never need a page/URL of their own (e.g. an "author" or "manufacturer" linked from posts/products). List those under `contentful_data_collections` instead, and they're fetched into `site.data.<name>` rather than generating pages:
 

@@ -133,8 +133,10 @@ module ContentfulJekyll
     end
 
     def fetch_collection(site, client, collection)
+      body_field = (collection["body_field"] || "body").to_sym
+
       each_entry(client, entries_query(collection)) do |entry|
-        site.pages << build_page(site, entry, collection)
+        site.pages << build_page(site, entry, collection, body_field)
       end
     end
 
@@ -177,14 +179,12 @@ module ContentfulJekyll
       end
     end
 
-    def build_page(site, entry, collection)
-      dir = [collection["dir"], sanitized_slug(entry)].compact.reject(&:empty?).join("/")
+    def build_page(site, entry, collection, body_field)
+      dir = [collection["dir"], sanitized_slug(entry)].compact.reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
       end
-
-      body_field = (collection["body_field"] || "body").to_sym
 
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
       page.content = render_body(site, entry.fields[body_field])
@@ -272,11 +272,13 @@ module ContentfulJekyll
     # Memoized per (entry, depth): the same entry can be linked from many
     # pages (e.g. a shared "author"), and Contentful's `includes` list is
     # already deduplicated -- no need to re-flatten it once per occurrence.
-    # The resulting Hash is shared by reference across those occurrences;
-    # fine since nothing downstream mutates it, only reads it in Liquid.
+    # The resulting Hash is shared by reference across those occurrences,
+    # so it's frozen: nothing downstream should mutate it (only read it in
+    # Liquid), and freezing turns that assumption into an enforced error
+    # instead of silent cross-page corruption if it's ever violated.
     def serialize_entry(entry, depth)
       @entry_cache[[entry.sys[:id], depth]] ||= { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
-        .merge(flatten_fields(entry, depth + 1))
+        .merge(flatten_fields(entry, depth + 1)).freeze
     end
 
     # Shared by build_page (top-level page fields) and serialize_entry
@@ -289,7 +291,7 @@ module ContentfulJekyll
       end
 
       display_field = @display_fields[entry.sys[:content_type]&.id]
-      data["title"] = data[display_field] if display_field
+      data["title"] = serialize_field(entry.fields[display_field.to_sym], depth) if display_field
 
       data
     end
