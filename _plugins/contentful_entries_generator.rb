@@ -1,4 +1,5 @@
 require "cgi"
+require "set"
 require_relative "contentful_client"
 require "rich_text_renderer"
 
@@ -58,6 +59,7 @@ module ContentfulJekyll
       end
 
       @display_fields = fetch_display_fields(client)
+      @built_dirs = Set.new
 
       collections = site.config["contentful_collections"] || []
 
@@ -81,11 +83,15 @@ module ContentfulJekyll
     # `eventName`) -- see flatten_fields below. There's no need for a
     # content type to have a field literally called `title`.
     def fetch_display_fields(client)
-      client.content_types(limit: MAX_PAGE_SIZE).each_with_object({}) do |content_type, fields|
+      fields = {}
+
+      each_page(client.content_types(limit: MAX_PAGE_SIZE), client) do |content_type|
         next if content_type.display_field.nil?
 
         fields[content_type.id] = Contentful::Support.snakify(content_type.display_field)
       end
+
+      fields
     end
 
     def entries_query(collection)
@@ -122,14 +128,19 @@ module ContentfulJekyll
       site.data[name] = entries
     end
 
-    # Loops through every page of entries for a query, following
-    # Contentful::Array#next_page (which reuses the original query, so
-    # content_type/order/include all carry forward automatically).
     def each_entry(client, query)
-      page = client.entries(query)
+      each_page(client.entries(query), client) { |entry| yield entry }
+    end
+
+    # Loops through every page of a Contentful::Array result (entries,
+    # content types, ...), following Contentful::Array#next_page (which
+    # reuses the original query, so content_type/order/include all carry
+    # forward automatically).
+    def each_page(first_page, client)
+      page = first_page
 
       loop do
-        page.each { |entry| yield entry }
+        page.each { |item| yield item }
         break if page.skip.to_i + page.items.size >= page.total.to_i
 
         page = page.next_page(client)
@@ -139,6 +150,10 @@ module ContentfulJekyll
 
     def build_page(site, entry, collection)
       dir = [collection["dir"], sanitized_slug(entry)].reject { |part| part.nil? || part.to_s.empty? }.join("/")
+
+      unless @built_dirs.add?(dir)
+        Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
+      end
 
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
       page.content = render_body(site, entry.fields[:body])
