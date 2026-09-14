@@ -46,7 +46,16 @@ module ContentfulJekyll
 
       display_fields = fetch_display_fields(client)
       entry_depth = site.config["contentful_entry_depth"] || EntrySerializer::DEFAULT_ENTRY_DEPTH
-      @built_dirs = Set.new
+      # Seeded with every already-existing page's URL (static files like
+      # index.html, already loaded into site.pages by the time a
+      # Generator runs) so a Contentful entry whose computed URL collides
+      # with one of them -- e.g. a blank/missing slug on a dir: ""
+      # collection producing "/" -- gets this generator's own specific
+      # warning, not just Jekyll's generic "destination shared by
+      # multiple files" one (which still fires, but doesn't say which
+      # entry caused it, and is easy to miss among this template's other
+      # routine build warnings).
+      @built_dirs = Set.new(site.pages.map(&:url))
 
       collections = site.config["contentful_collections"] || []
       data_collections = site.config["contentful_data_collections"] || []
@@ -206,12 +215,12 @@ module ContentfulJekyll
 
     def build_page(site, entry, collection, body_field, home_label, locale, collection_dir)
       dir = [locale.url_prefix, collection_dir, sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
+      page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
 
-      unless @built_dirs.add?(dir)
-        Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
+      unless @built_dirs.add?(page.url)
+        Jekyll.logger.warn "Contentful:", "multiple entries (or an existing site file) produced the URL \"#{page.url}\" (entry #{entry.sys[:id]} included) -- only the last one written will survive in the build output"
       end
 
-      page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
       page.content = @serializer.render_body(entry.fields[body_field])
       page.data["layout"] = collection["layout"]
       page.data["nav"] = true if collection["nav"]

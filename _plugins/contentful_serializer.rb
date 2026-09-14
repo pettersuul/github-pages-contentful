@@ -97,12 +97,21 @@ module ContentfulJekyll
       end
     end
 
+    # `Contentful::File` only defines a method for each key actually present
+    # in the raw JSON (contentful.rb's own `define_fields!`) -- an asset
+    # that hasn't finished processing yet (e.g. linked from a draft entry,
+    # fetched via CONTENTFUL_PREVIEW) has no "url" key at all yet, so
+    # `file.url` is a genuinely undefined method, not nil; `file&.url`
+    # doesn't help since `&.` only guards a nil receiver, not an undefined
+    # method on a real one. Confirmed via a synthetic Contentful::File
+    # missing #url: raises NoMethodError, doesn't return nil.
     def serialize_asset(asset)
       file = asset.fields[:file]
+      url = file.respond_to?(:url) ? file.url : nil
 
       {
-        "url" => file.nil? ? nil : absolute_url(file.url),
-        "content_type" => file&.content_type,
+        "url" => url.nil? ? nil : absolute_url(url),
+        "content_type" => file.respond_to?(:content_type) ? file.content_type : nil,
         "title" => asset.fields[:title],
         "description" => asset.fields[:description]
       }
