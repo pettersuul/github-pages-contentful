@@ -4,8 +4,6 @@ baseurl: ""
 url: ""
 
 markdown: kramdown
-plugins:
-  - jekyll-feed
 
 # Contentful content types this site pulls entries from. Each entry's
 # fields (slug, body, and publishDate where relevant) become a generated
