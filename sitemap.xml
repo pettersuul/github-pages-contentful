@@ -4,15 +4,10 @@ layout: none
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 {% comment %}
-  Every page's .url and nothing else -- deliberately not the jekyll-sitemap
-  gem (see CLAUDE.md's "No RSS/Atom feed" note for why a generic
-  third-party template assuming specific field names is a real risk for
-  this repo's arbitrary, per-site content model; a sitemap only needs
-  .url, so this is simple enough to just write directly). Excludes the
-  404 page and this file/robots.txt themselves (not real indexable
-  pages) by name, which works the same for both static Jekyll pages and
-  every Contentful-generated page (always literally named "index.html",
-  so never matches any of these).
+  Every page's .url, nothing else -- not the jekyll-sitemap gem (see
+  CLAUDE.md's jekyll-feed note for why). Excludes 404/sitemap/robots by
+  name; Contentful-generated pages are always named "index.html", so
+  never match.
 {% endcomment %}
 {% assign sitemap_pages = site.pages | where_exp: "p", "p.name != '404.html' and p.name != 'sitemap.xml' and p.name != 'robots.txt'" %}
 {% for p in sitemap_pages %}

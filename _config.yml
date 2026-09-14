@@ -2,32 +2,22 @@ title: Contentful + GitHub Pages
 description: A Jekyll site whose content is fetched from Contentful at build time.
 baseurl: ""
 url: ""
-# The primary language of this site's own content, for <html lang> (see
-# _layouts/default.html) -- update if the primary locale in
-# contentful_collections (see below) isn't English. Only affects the
-# primary locale's pages; every other configured locale's pages get
-# their own real <html lang> from their Contentful locale code already.
+# Primary language for <html lang> (see _layouts/default.html) -- update
+# if the primary locale below isn't English. Other configured locales get
+# their own <html lang> from their Contentful locale code automatically.
 lang: en
 
-# Contentful content types this site pulls entries from. Each entry's
-# fields (slug, body, and publishDate where relevant) become a generated
-# page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
-# into a URL-safe form if needed). Set nav: true on a collection to list
-# its pages in the site nav (see _layouts/default.html), and home: true
-# to group them into a section on the homepage (see index.html), headed
-# by label if set (a string, or a Hash keyed by locale code for a
-# translated heading), else a humanized content_type (e.g. "newsArticle"
-# -> "News Article"). Set order to a Contentful CDA order value (e.g.
-# "fields.publishDate" or "-fields.publishDate") to control fetch/display
-# order; defaults to "-sys.updatedAt". Set body_field if the field to
-# render as page content isn't named "body" (e.g. body_field: content) --
-# note a field named "content" is otherwise unreachable, since it
-# collides with Jekyll's own reserved page.content. Set image_field if
-# the field to use as this collection's Open Graph/Twitter Card image
-# (see _includes/seo.html) isn't named "image" (e.g. image_field:
-# coverImage) -- exposed to layouts as page.social_image either way.
-# Add or remove collections here to adapt this template to a new site
-# without touching the generator plugin.
+# Contentful content types this site pulls entries from. Each entry
+# becomes a generated page at /<dir>/<slug>/ (dir: "" = site root).
+# nav: true lists it in the site nav; home: true groups it into a
+# homepage section (see index.html), headed by label (string, or a Hash
+# keyed by locale code) or a humanized content_type. order takes a
+# Contentful CDA order value (default "-sys.updatedAt"). body_field sets
+# a different content field name (needed if it's literally "content",
+# which collides with Jekyll's page.content). image_field sets a
+# different Open Graph/Twitter image field (see _includes/seo.html),
+# exposed as page.social_image either way.
+# Add or remove collections here to adapt this template to a new site.
 contentful_collections:
   - content_type: post
     layout: single
@@ -40,30 +30,23 @@ contentful_collections:
     nav: true
 
 # Optional: how deep a linked entry's own fields get flattened before
-# falling back to an {id, link_type} stub, to bound build output on
-# heavily cross-referenced content models. Defaults to 2 if unset.
+# falling back to an {id, link_type} stub. Defaults to 2 if unset.
 # contentful_entry_depth: 2
 
-# Optional: build every collection/data collection once per locale.
-# Omit entirely (or list a single locale) for a single-locale site --
-# every query, URL, and site.data key is then identical to not having
-# this setting at all. With 2+ locales, the first is the primary locale
-# (unprefixed URLs, e.g. /products/vin/, and unsuffixed site.data keys);
-# every other locale gets its own /<prefix>/... URL prefix (e.g.
-# /nb-NO/products/vin/) and a site.data.<name>_<prefix> key (e.g.
-# site.data.authors_nb_no). Locale codes are whatever Contentful uses
-# for that space (Settings > Locales). An entry can be a bare code
-# (prefix == code, as below) or {code:, prefix:} for a shorter/different
-# URL prefix, e.g. {code: nb-NO, prefix: "no"} -- quote a prefix that
-# could look like a YAML boolean (no/yes/on/off), or it silently
-# becomes true/false instead of that string.
+# Optional: build every collection/data collection once per locale (from
+# Contentful Settings > Locales). Omit for a single-locale site. With 2+
+# locales, the first is primary (unprefixed URLs/site.data keys); every
+# other locale gets its own /<prefix>/... URL prefix and
+# site.data.<name>_<prefix> key. An entry is a bare code (prefix == code)
+# or {code:, prefix:} for a different prefix -- quote a prefix that could
+# look like a YAML boolean (no/yes/on/off), or it becomes true/false.
 # contentful_locales:
 #   - en-US
 #   - nb-NO
 
-# Content types fetched into site.data.<name> instead of generated pages --
-# for entries that are only ever linked to from other entries (e.g. authors,
-# manufacturers) and have no page of their own.
+# Content types fetched into site.data.<name> instead of generated pages
+# -- for entries only ever linked to from others (e.g. authors,
+# manufacturers), with no page of their own.
 # contentful_data_collections:
 #   - content_type: author
 #     name: authors

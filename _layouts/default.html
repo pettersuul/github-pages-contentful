@@ -1,10 +1,8 @@
 <!doctype html>
 {% comment %}
-  page_title/page_lang are assigned here, not recomputed in seo.html, so
-  <title>/<html lang> and seo.html's og:title/og:locale can't silently
-  drift out of sync with each other -- confirmed Jekyll's Liquid shares
-  assign-scope between an includer and its {% include %} (a plain local
-  variable, unlike the "content" special variable seo.html also reads).
+  Assigned once here and read by seo.html's include, so <title>/<html lang>
+  can't drift from og:title/og:locale. Jekyll's Liquid shares assign-scope
+  between an includer and its {% include %}.
 {% endcomment %}
 {% assign page_title = page.title | default: site.title %}
 {% assign page_lang = page.locale | default: site.lang | default: "en" %}
@@ -20,14 +18,10 @@
     <a href="{{ '/' | relative_url }}">{{ site.title }}</a>
     <nav>
       {% comment %}
-        "locale" is unset on every primary-locale page (including every
-        page when contentful_locales isn't configured at all), so
-        `where: "locale", page.locale` is then a no-op (nil matches nil,
-        confirmed against Jekyll's own `where` filter -- not raw Liquid's,
-        which behaves differently) and this lists every nav page, exactly
-        as before locale support existed. With multiple locales
-        configured, it scopes the nav to pages in the same locale as the
-        one currently being rendered.
+        page.locale is unset on every primary-locale page, so this `where`
+        is then a no-op (Jekyll's `where`, not raw Liquid's, matches nil
+        to nil) and lists every nav page. With multiple locales, it scopes
+        the nav to the page currently being rendered.
       {% endcomment %}
       {% assign nav_pages = site.pages | where: "nav", true | where: "locale", page.locale | sort: "title" %}
       {% for p in nav_pages %}

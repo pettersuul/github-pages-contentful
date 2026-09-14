@@ -3,22 +3,15 @@ require_relative "contentful_rich_text"
 
 module ContentfulJekyll
   # Turns a Contentful::Entry into Jekyll-usable data: a flattened field
-  # Hash for page.data/site.data, plus rendered HTML for a body field.
-  # This is a pure data transformation with its own state (a display-field
-  # lookup, entry memoization) applied identically whether the entry is
-  # a top-level generated page, a linked reference, or a data-only
-  # collection entry -- kept separate from EntriesGenerator's Jekyll build
-  # lifecycle (fetching pages, writing warnings) for that reason.
+  # Hash plus rendered body HTML. Pure data transformation, kept separate
+  # from EntriesGenerator's build lifecycle (fetching, warnings).
   class EntrySerializer
-    # Default for how deep a linked entry's own fields get flattened before
-    # falling back to an {id, link_type} stub, to bound build output on
-    # heavily cross-referenced content models -- overridable per site via
-    # _config.yml's contentful_entry_depth (see CLAUDE.md).
+    # Default recursion depth for flattening linked entries before
+    # degrading to a stub. Override via _config.yml's contentful_entry_depth.
     DEFAULT_ENTRY_DEPTH = 2
 
-    # display_fields maps content_type id -> snake_cased field name of
-    # that content type's Contentful "Entry title" setting (its
-    # displayField) -- see #flatten_fields.
+    # display_fields: content_type id -> snake_cased displayField name
+    # (see #flatten_fields).
     def initialize(site, display_fields, max_entry_depth = DEFAULT_ENTRY_DEPTH)
       @site = site
       @display_fields = display_fields
@@ -26,11 +19,9 @@ module ContentfulJekyll
       @entry_cache = {}
     end
 
-    # `value` can arrive as a Rich Text document (Hash), a plain/Markdown
-    # string, or nil. Generated pages are named "index.html", which never
-    # matches Jekyll's extension-based markdown_ext list, so neither case
-    # would otherwise be converted automatically -- both are rendered to
-    # HTML explicitly here.
+    # value: a Rich Text document (Hash), a plain/Markdown string, or nil.
+    # Generated pages are named "index.html", which Jekyll's markdown_ext
+    # never auto-converts, so both cases are rendered explicitly here.
     def render_body(value)
       case value
       when Hash
@@ -42,12 +33,9 @@ module ContentfulJekyll
       end
     end
 
-    # Flattens every field on an entry (other than any in `skip`, e.g. the
-    # body field) onto a plain Hash keyed by snake_cased field name, and
-    # always sets "title" from the content type's displayField (see
-    # #initialize) -- read straight from entry.fields, not from the Hash
-    # being built, so it's correct even when the displayField happens to
-    # be the same field passed in `skip`.
+    # Flattens entry fields (except `skip`) to a snake_cased Hash. "title"
+    # always comes from the content type's displayField, read straight
+    # from entry.fields so it's correct even if displayField == skip.
     def flatten_fields(entry, depth, skip: [])
       data = entry.fields.each_with_object({}) do |(name, value), data|
         next if skip.include?(name)
@@ -61,16 +49,10 @@ module ContentfulJekyll
       data
     end
 
-    # Flattens a linked entry's fields the same way #flatten_fields
-    # flattens a top-level page's fields, so `{{ page.author.title }}`
-    # works directly. Memoized per (entry, depth): the same entry can be
-    # linked from many pages (e.g. a shared "author"), and Contentful's
-    # `includes` list is already deduplicated -- no need to re-flatten it
-    # once per occurrence. The resulting Hash is shared by reference
-    # across those occurrences, so it's frozen: nothing downstream should
-    # mutate it (only read it in Liquid), and freezing turns that
-    # assumption into an enforced error instead of silent cross-page
-    # corruption if it's ever violated.
+    # Flattens a linked entry like #flatten_fields, so `page.author.title`
+    # works directly. Memoized per (entry id, depth), since Contentful's
+    # `includes` is already deduplicated. Frozen: the Hash is shared by
+    # reference across occurrences and nothing downstream should mutate it.
     def serialize_entry(entry, depth)
       @entry_cache[[entry.sys[:id], depth]] ||= { "id" => entry.sys[:id], "content_type" => entry.sys[:content_type]&.id }
         .merge(flatten_fields(entry, depth + 1)).freeze
@@ -78,10 +60,9 @@ module ContentfulJekyll
 
     private
 
-    # Recursively converts SDK objects (Contentful::Asset, Contentful::Entry,
-    # Contentful::Link, arrays of them) into plain Hashes/Strings that Liquid
-    # can render, since Liquid can't call methods like `.file.url` or
-    # `.fields[...]` on the raw contentful.rb objects.
+    # Recursively converts SDK objects into plain Hashes/Strings Liquid can
+    # render (Liquid can't call `.file.url`/`.fields[...]` on raw
+    # contentful.rb objects).
     def serialize_field(value, depth = 0)
       case value
       when Contentful::Asset
@@ -97,22 +78,16 @@ module ContentfulJekyll
       end
     end
 
-    # `Contentful::File` only defines a method for each key actually present
-    # in the raw JSON (contentful.rb's own `define_fields!`) -- an asset
-    # that hasn't finished processing yet (e.g. linked from a draft entry,
-    # fetched via CONTENTFUL_PREVIEW) has no "url" key at all yet, so
-    # `file.url` is a genuinely undefined method, not nil; `file&.url`
-    # doesn't help since `&.` only guards a nil receiver, not an undefined
-    # method on a real one. Confirmed via a synthetic Contentful::File
-    # missing #url: raises NoMethodError, doesn't return nil. #safe_field
-    # centralizes that guard for every dynamically-defined Contentful::File
-    # method this reads.
+    # Contentful::File only defines methods for keys present in the raw
+    # JSON -- an unprocessed asset (e.g. a draft via CONTENTFUL_PREVIEW)
+    # has no `url` key, so `file.url` raises NoMethodError, not nil
+    # (`file&.url` doesn't help). #safe_field guards every dynamic
+    # Contentful::File method read here.
     def serialize_asset(asset)
       file = asset.fields[:file]
       url = safe_field(file, :url)
-      # `details` is a plain parsed-JSON Hash (string keys), not another
-      # dynamic contentful.rb object -- `["image"]` is nil, not an error,
-      # for a non-image asset (a PDF, say) or one still processing.
+      # `details` is a plain Hash, not a dynamic object -- `["image"]` is
+      # just nil for a non-image asset or one still processing.
       image_details = safe_field(file, :details)&.[]("image")
 
       {

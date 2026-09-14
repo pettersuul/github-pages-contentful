@@ -5,12 +5,10 @@ require_relative "contentful_locales"
 require_relative "contentful_serializer"
 
 module ContentfulJekyll
-  # A Jekyll::Generator that runs during the build, iterates the
-  # contentful_collections/contentful_data_collections lists in _config.yml,
-  # fetches matching entries from Contentful, and turns each one into either
-  # a generated page (Jekyll::PageWithoutAFile) or a site.data entry. See
-  # CLAUDE.md for the full picture; entry-to-Jekyll-data conversion lives in
-  # EntrySerializer and locale resolution in contentful_locales.rb, not here.
+  # Jekyll::Generator that reads contentful_collections/
+  # contentful_data_collections from _config.yml and turns entries into
+  # generated pages or site.data. See CLAUDE.md; entry conversion lives in
+  # EntrySerializer, locale resolution in contentful_locales.rb.
   class EntriesGenerator < Jekyll::Generator
     safe true
     priority :high
@@ -21,12 +19,8 @@ module ContentfulJekyll
     MAX_PAGE_SIZE = 1000
     INCLUDE_DEPTH = 10
 
-    # Everything about one contentful_collections entry that's constant
-    # across every entry in it for a given locale pass -- computed once in
-    # fetch_collection (same reasoning as body_field/home_label/dir being
-    # hoisted out of the per-entry loop already) and passed as one object
-    # to build_page instead of growing that method's positional params by
-    # one every time a new per-collection setting is added.
+    # Per-collection/locale constants, computed once in fetch_collection
+    # and passed as one object to build_page instead of growing its param list.
     CollectionContext = Struct.new(:collection, :locale, :body_field, :home_label, :dir, :image_field, keyword_init: true)
 
     def generate(site)
@@ -40,24 +34,18 @@ module ContentfulJekyll
 
       display_fields = fetch_display_fields(client)
       entry_depth = site.config["contentful_entry_depth"] || EntrySerializer::DEFAULT_ENTRY_DEPTH
-      # Seeded with every already-existing page's URL (static files like
-      # index.html, already loaded into site.pages by the time a
-      # Generator runs) so a Contentful entry whose computed URL collides
-      # with one of them -- e.g. a blank/missing slug on a dir: ""
-      # collection producing "/" -- gets this generator's own specific
-      # warning, not just Jekyll's generic "destination shared by
-      # multiple files" one (which still fires, but doesn't say which
-      # entry caused it, and is easy to miss among this template's other
-      # routine build warnings).
+      # Seeded with every existing static page's URL, so a Contentful
+      # entry colliding with one (e.g. a blank slug on dir: "" -> "/")
+      # gets a specific warning naming the entry, not just Jekyll's
+      # generic unnamed "destination shared by multiple files" one.
       @built_dirs = Set.new(site.pages.map(&:url))
 
       collections = site.config["contentful_collections"] || []
       data_collections = site.config["contentful_data_collections"] || []
 
       ContentfulJekyll.each_locale(site.config["contentful_locales"]) do |locale|
-        # A fresh EntrySerializer per locale, so its entry-memoization cache
-        # never mixes up the same Contentful entry's differently-translated
-        # field values across locales.
+        # Fresh EntrySerializer per locale, so its memoization cache never
+        # mixes translations across locales.
         @serializer = EntrySerializer.new(site, display_fields, entry_depth)
 
         collections.each { |collection| fetch_collection(site, client, collection, locale) }
@@ -67,14 +55,9 @@ module ContentfulJekyll
 
     private
 
-    # Maps content_type id -> snake_cased field name of Contentful's own
-    # "Entry title" setting (a content type's displayField), passed to
-    # EntrySerializer so page.title (and a linked/data-collection entry's
-    # own "title") always comes from that field, whatever it's actually
-    # named (e.g. `headline` or `eventName`) -- there's no need for a
-    # content type to have a field literally called `title`. Content type
-    # schemas (including displayField) aren't locale-specific, so this is
-    # fetched once, not per locale.
+    # Maps content_type id -> snake_cased displayField name, so page.title
+    # always resolves correctly regardless of the field's real name.
+    # Fetched once, not per locale (schemas aren't locale-specific).
     def fetch_display_fields(client)
       fields = {}
 
@@ -113,16 +96,10 @@ module ContentfulJekyll
       end
     end
 
-    # A collection's homepage section heading: an explicit `label` (a plain
-    # string, used as-is for every locale, or -- mirroring `dir`'s
-    # per-locale Hash escape hatch -- a Hash keyed by locale code for a
-    # translated heading per locale), or a humanized form of its
-    # content_type id (e.g. "newsArticle" -> "News Article") via the same
-    # snake_casing contentful.rb itself uses for field names, rather than
-    # the raw id capitalized as-is. Unlike `dir_for`, a locale missing from
-    # a `label` Hash falls back to the humanized default rather than
-    # raising -- an untranslated heading is a real but non-breaking gap,
-    # not a broken URL.
+    # Homepage section heading: explicit `label` (a string, or a Hash
+    # keyed by locale code, mirroring `dir`), else a humanized content_type
+    # (e.g. "newsArticle" -> "News Article"). Unlike dir_for, falls back
+    # instead of raising -- an untranslated heading isn't a broken URL.
     def home_label_for(collection, locale)
       label = collection["label"]
       label = label[locale.code] if label.is_a?(Hash)
@@ -153,10 +130,8 @@ module ContentfulJekyll
       each_page(client.entries(query), client) { |entry| yield entry }
     end
 
-    # Loops through every page of a Contentful::Array result (entries,
-    # content types, ...), following Contentful::Array#next_page (which
-    # reuses the original query, so content_type/order/include all carry
-    # forward automatically).
+    # Pages through a Contentful::Array result via #next_page, which
+    # reuses the original query.
     def each_page(first_page, client)
       page = first_page
 
@@ -183,22 +158,16 @@ module ContentfulJekyll
       page.data["home_label"] = context.home_label if context.home_label
       page.data["locale"] = context.locale.code unless context.locale.primary?
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [context.body_field]))
-      # A generic alias for whatever field holds this collection's social
-      # preview image (Open Graph/Twitter Card, see _includes/seo.html),
-      # since content types name it differently ("coverImage", "image",
-      # "contentImage", ...) -- same body_field/image_field pattern.
-      # Defaults to trying "image" (a common convention); harmless if no
-      # such field exists (just nil, same as any other absent field).
+      # Generic alias for the social preview image field (see
+      # _includes/seo.html), since content types name it differently.
+      # Defaults to "image"; nil if absent, same as any other field.
       page.data["social_image"] = page.data[context.image_field]
 
       page
     end
 
-    # Content editors will eventually type a slug with spaces, capitals, or
-    # other characters that aren't safe verbatim in a URL path. Reuses
-    # Jekyll's own slugify (the same normalization Jekyll applies to post
-    # filenames/permalinks) rather than leaving a raw field value to become
-    # the page's URL unchanged.
+    # Sanitizes a slug into a URL-safe form via Jekyll's own slugify (same
+    # normalization as post permalinks).
     def sanitized_slug(entry)
       raw_slug = entry.fields[:slug]
       return raw_slug if raw_slug.nil?

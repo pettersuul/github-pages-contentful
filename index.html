@@ -7,12 +7,9 @@ title: Home
 <p>{{ site.description }}</p>
 
 {% comment %}
-  This page lives at the site root, so it only ever shows the primary
-  locale's content (page.locale is unset here, matching every page in a
-  single-locale build, or only the primary locale's pages in a
-  multi-locale one -- see _plugins/contentful_entries_generator.rb).
-  A site wanting a localized homepage too needs its own index.html per
-  locale (e.g. nb-NO/index.html), following the same pattern.
+  Lives at the site root, so it only ever shows the primary locale's
+  content (page.locale is unset here). A localized homepage needs its
+  own index.html per locale (e.g. nb-NO/index.html).
 {% endcomment %}
 {% assign home_pages = site.pages | where_exp: "p", "p.home_label" | where: "locale", page.locale %}
 {% assign home_groups = home_pages | group_by: "home_label" %}
