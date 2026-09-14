@@ -22,7 +22,10 @@ lang: en
 # order; defaults to "-sys.updatedAt". Set body_field if the field to
 # render as page content isn't named "body" (e.g. body_field: content) --
 # note a field named "content" is otherwise unreachable, since it
-# collides with Jekyll's own reserved page.content.
+# collides with Jekyll's own reserved page.content. Set image_field if
+# the field to use as this collection's Open Graph/Twitter Card image
+# (see _includes/seo.html) isn't named "image" (e.g. image_field:
+# coverImage) -- exposed to layouts as page.social_image either way.
 # Add or remove collections here to adapt this template to a new site
 # without touching the generator plugin.
 contentful_collections:

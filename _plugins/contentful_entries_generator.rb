@@ -170,6 +170,13 @@ module ContentfulJekyll
       page.data["home_label"] = home_label if home_label
       page.data["locale"] = locale.code unless locale.primary?
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
+      # A generic alias for whatever field holds this collection's social
+      # preview image (Open Graph/Twitter Card, see _includes/seo.html),
+      # since content types name it differently ("coverImage", "image",
+      # "contentImage", ...) -- same body_field/image_field pattern.
+      # Defaults to trying "image" (a common convention); harmless if no
+      # such field exists (just nil, same as any other absent field).
+      page.data["social_image"] = page.data[collection["image_field"] || "image"]
 
       page
     end

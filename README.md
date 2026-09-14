@@ -48,6 +48,7 @@ contentful_collections:
 | `label` | no | Homepage section heading for this collection, if `home` is set. A plain string, or a Hash keyed by locale code (mirroring `dir`) for a translated heading per locale. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article") for any locale without one. |
 | `order` | no | A [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`. |
 | `body_field` | no | The field to render as page content, if not `body`. A field literally named `content` collides with Jekyll's own reserved `page.content`/`{{ content }}` and is otherwise unreachable, so this is the only way to use such a field as the page body. |
+| `image_field` | no | The field to use as `page.social_image` (the Open Graph/Twitter Card image — see SEO below), if not `image`. |
 
 `post` and `page` both use `_layouts/single.html`, a small shared layout (`layout: default` + `{% include article.html %}`) — give a collection its own layout file only once it needs different markup.
 
@@ -64,7 +65,7 @@ To add a new content type (e.g. a "product" or "event"), add an entry to `conten
 Every field on an entry (other than its body field, which becomes `content`/`{{ content }}`) is available on `page` by its snake_cased field ID — a Contentful field `coverImage` becomes `page.cover_image`, with no config or Ruby changes needed to reference a new field. A few field types need a bit more than `{{ page.some_field }}`:
 
 - **`page.title`** — always available, regardless of what the title field is actually called in Contentful (see above).
-- **Asset fields** (an image, file, etc.) become `{ "url", "content_type", "title", "description" }`: `<img src="{{ page.cover_image.url }}" alt="{{ page.cover_image.title }}">`.
+- **Asset fields** (an image, file, etc.) become `{ "url", "content_type", "title", "description", "width", "height" }` (`width`/`height` are only set for images, `nil` otherwise): `<img src="{{ page.cover_image.url }}" alt="{{ page.cover_image.title }}" width="{{ page.cover_image.width }}" height="{{ page.cover_image.height }}">` — including dimensions avoids layout shift while the image loads.
 - **Reference fields** (a link to another entry) become that entry's own fields, flattened the same way — `{{ page.author.title }}`, `{{ page.author.email }}`, etc. work directly, one level deep by default (see `contentful_entry_depth` above for content models with deeper reference chains).
 - **Array fields** (multiple values, or multiple references) become a Liquid array — loop with `{% for tag in page.tags %}{{ tag }}{% endfor %}`, or `{% for related in page.related_posts %}{{ related.title }}{% endfor %}` for an array of references.
 - A reference field whose linked entry has its own Rich Text field does **not** get that field pre-rendered to HTML (only a page's own top-level body field is) — it arrives as a raw Rich Text document, not usable directly in a layout without extra work.
@@ -110,12 +111,24 @@ A locale code has to already exist in your Contentful space (Settings → Locale
 
 Set the top-level `lang` in `_config.yml` (defaults to `en`) to your primary locale's language, for `<html lang>` on primary-locale pages — every other configured locale's pages get their own correct `<html lang>` automatically from their Contentful locale code.
 
+## SEO, sitemap, robots.txt, and 404
+
+Every page automatically gets a canonical link, a meta description, and Open Graph/Twitter Card tags (via `_includes/seo.html`, included from `_layouts/default.html`) — no per-page setup needed:
+
+- The description falls back to the page's own rendered content (stripped and truncated) if the content type has no `description` field.
+- The social preview image comes from `page.social_image`, which defaults to a field literally named `image` on each collection — set `image_field` on a `contentful_collections` entry (see above) if the real field is named something else (e.g. `coverImage`).
+- `og:locale` is derived from the page's locale (or the top-level `lang` setting for the primary locale).
+
+`sitemap.xml` and `robots.txt` are generated at the site root from every page's `.url`, so they stay correct automatically as content is added or removed — no extra config. A custom `404.html` is included too (required by GitHub Pages to show something other than GitHub's own default 404 page).
+
+**All of this needs `url` set correctly in `_config.yml`** (see the next section) — without a real absolute URL, canonical links, Open Graph tags, and the sitemap all render broken/relative links.
+
 ## Using this repo as a template
 
 This repo is a GitHub template repo. To start a new site from it:
 
 1. Click "Use this template" on GitHub (or `gh repo create <new-repo> --template pettersuul/github-pages-contentful`) to create your new repo.
-2. Update `title`/`description` in `_config.yml`, and adjust `contentful_collections` to match the new site's content types.
+2. Update `title`/`description`/`url` in `_config.yml` (the last one to the site's real deployed URL, e.g. `https://<user>.github.io` — canonical links, Open Graph tags, and the sitemap all need a real absolute URL to be correct), and adjust `contentful_collections` to match the new site's content types.
 3. Point it at a new Contentful space via `.env` locally and the three Actions secrets in the new repo (see Setup above).
 
 ## Commands

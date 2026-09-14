@@ -108,12 +108,18 @@ module ContentfulJekyll
     def serialize_asset(asset)
       file = asset.fields[:file]
       url = file.respond_to?(:url) ? file.url : nil
+      # `details` is a plain parsed-JSON Hash (string keys), not another
+      # dynamic contentful.rb object -- `["image"]` is nil, not an error,
+      # for a non-image asset (a PDF, say) or one still processing.
+      image_details = file.respond_to?(:details) ? file.details["image"] : nil
 
       {
         "url" => url.nil? ? nil : absolute_url(url),
         "content_type" => file.respond_to?(:content_type) ? file.content_type : nil,
         "title" => asset.fields[:title],
-        "description" => asset.fields[:description]
+        "description" => asset.fields[:description],
+        "width" => image_details && image_details["width"],
+        "height" => image_details && image_details["height"]
       }
     end
 
