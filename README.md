@@ -39,6 +39,7 @@ contentful_collections:
 - `nav` — optional; set `true` to list this collection's pages in the site nav (see `_layouts/default.html`)
 - `home` — optional; set `true` to list this collection's pages in a section on the homepage (see `index.html`)
 - `order` — optional; a [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`
+- `body_field` — optional; the field to render as page content, if not `body`. Note that a field named `content` collides with Jekyll's own reserved `page.content`/`{{ content }}` and becomes unreachable any other way, so this is the only way to use such a field as the page body.
 
 An entry's `slug` field is sanitized into a URL-safe form (lowercased, spaces/punctuation replaced) if it isn't one already — a build warning is logged when this happens, so messy slugs in Contentful are visible without breaking the build.
 

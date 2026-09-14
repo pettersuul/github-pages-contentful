@@ -31,9 +31,22 @@ module ContentfulJekyll
     end
   end
 
+  # rich_text_renderer's own DEFAULT_MAPPINGS covers every Rich Text mark
+  # except "strikethrough" -- without this, any entry using that mark (a
+  # standard formatting option in Contentful's own Rich Text editor) fails
+  # the whole build.
+  class StrikethroughRenderer < RichTextRenderer::BaseInlineRenderer
+    protected
+
+    def render_tag
+      "s"
+    end
+  end
+
   RICH_TEXT_MAPPINGS = {
     "embedded-entry-block" => EmbeddedEntryBlockRenderer,
-    "embedded-entry-inline" => EmbeddedEntryInlineRenderer
+    "embedded-entry-inline" => EmbeddedEntryInlineRenderer,
+    "strikethrough" => StrikethroughRenderer
   }.freeze
 
   class EntriesGenerator < Jekyll::Generator
@@ -156,11 +169,13 @@ module ContentfulJekyll
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
       end
 
+      body_field = (collection["body_field"] || "body").to_sym
+
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
-      page.content = render_body(site, entry.fields[:body])
+      page.content = render_body(site, entry.fields[body_field])
       page.data["layout"] = collection["layout"]
       page.data["nav"] = true if collection["nav"]
-      page.data.merge!(flatten_fields(entry, 0, skip: [:body]))
+      page.data.merge!(flatten_fields(entry, 0, skip: [body_field]))
 
       page
     end

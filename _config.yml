@@ -15,7 +15,10 @@ plugins:
 # to list them on the homepage (see index.html). Set order to a
 # Contentful CDA order value (e.g. "fields.publishDate" or
 # "-fields.publishDate") to control fetch/display order; defaults to
-# "-sys.updatedAt".
+# "-sys.updatedAt". Set body_field if the field to render as page content
+# isn't named "body" (e.g. body_field: content) -- note a field named
+# "content" is otherwise unreachable, since it collides with Jekyll's own
+# reserved page.content.
 # Add or remove collections here to adapt this template to a new site
 # without touching the generator plugin.
 contentful_collections:
