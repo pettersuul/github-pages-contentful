@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ page.locale | default: "en" }}">
+<html lang="{{ page.locale | default: site.lang | default: "en" }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,10 +10,12 @@
     <a href="{{ '/' | relative_url }}">{{ site.title }}</a>
     <nav>
       {% comment %}
-        "locale" is unset on every page when contentful_locales isn't
-        configured (or has only one entry), so `where: "locale", page.locale`
-        is then a no-op (nil matches nil) and this lists every nav page,
-        exactly as before locale support existed. With multiple locales
+        "locale" is unset on every primary-locale page (including every
+        page when contentful_locales isn't configured at all), so
+        `where: "locale", page.locale` is then a no-op (nil matches nil,
+        confirmed against Jekyll's own `where` filter -- not raw Liquid's,
+        which behaves differently) and this lists every nav page, exactly
+        as before locale support existed. With multiple locales
         configured, it scopes the nav to pages in the same locale as the
         one currently being rendered.
       {% endcomment %}

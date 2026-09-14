@@ -2,6 +2,12 @@ title: Contentful + GitHub Pages
 description: A Jekyll site whose content is fetched from Contentful at build time.
 baseurl: ""
 url: ""
+# The primary language of this site's own content, for <html lang> (see
+# _layouts/default.html) -- update if the primary locale in
+# contentful_collections (see below) isn't English. Only affects the
+# primary locale's pages; every other configured locale's pages get
+# their own real <html lang> from their Contentful locale code already.
+lang: en
 
 # Contentful content types this site pulls entries from. Each entry's
 # fields (slug, body, and publishDate where relevant) become a generated

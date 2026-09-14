@@ -23,7 +23,17 @@ module ContentfulJekyll
     # the single-locale/legacy path). url_prefix/data_suffix: nil for the
     # primary locale (today's exact URLs and site.data keys, unprefixed),
     # or the locale code for every other configured locale. See #each_locale.
-    Locale = Struct.new(:code, :url_prefix, :data_suffix)
+    # #primary? is the single source of truth for "is this the unprefixed
+    # locale" -- every call site checks that, not code/url_prefix directly,
+    # so a future one can't accidentally use the wrong signal (they mean
+    # different things: code is nil only in the true no-locale-configured
+    # pass, but url_prefix/primary? is nil for the *primary* locale even
+    # when real locales are configured and code is a real value).
+    Locale = Struct.new(:code, :url_prefix, :data_suffix) do
+      def primary?
+        url_prefix.nil?
+      end
+    end
 
     def generate(site)
       client = ContentfulClient.build
@@ -56,10 +66,14 @@ module ContentfulJekyll
 
     # Yields one Locale per entry in contentful_locales, first = primary
     # (unprefixed URLs/site.data keys, no page.data["locale"]), the rest
-    # prefixed with their own code by default. When contentful_locales is
-    # unset or has only one entry, yields a single Locale.new(nil, nil, nil)
-    # -- every query, URL, and site.data key this produces is byte-identical
-    # to a build with no locale support at all.
+    # prefixed with their own code by default. When contentful_locales isn't
+    # set at all, yields a single Locale.new(nil, nil, nil) -- every query,
+    # URL, and site.data key this produces is byte-identical to a build with
+    # no locale support at all. A *configured* single-entry list (e.g.
+    # contentful_locales: [nb-NO]) does NOT collapse to that same nil-code
+    # path -- it still sends an explicit locale: nb-NO on every query, so a
+    # deliberately-named locale is never silently swapped for whatever the
+    # Contentful space itself happens to default to.
     #
     # An entry is either a plain locale code ("nb-NO", prefix == code) or a
     # {code:, prefix:} Hash for when the URL/site.data prefix should be
@@ -72,7 +86,7 @@ module ContentfulJekyll
     def each_locale(site)
       configured = site.config["contentful_locales"]
 
-      if configured.nil? || configured.size <= 1
+      if configured.nil?
         yield Locale.new(nil, nil, nil)
         return
       end
@@ -136,9 +150,10 @@ module ContentfulJekyll
     def fetch_collection(site, client, collection, locale)
       body_field = (collection["body_field"] || "body").to_sym
       home_label = home_label_for(collection) if collection["home"]
+      collection_dir = dir_for(collection, locale)
 
       each_entry(client, entries_query(collection, locale)) do |entry|
-        site.pages << build_page(site, entry, collection, body_field, home_label, locale)
+        site.pages << build_page(site, entry, collection, body_field, home_label, locale, collection_dir)
       end
     end
 
@@ -189,8 +204,8 @@ module ContentfulJekyll
       end
     end
 
-    def build_page(site, entry, collection, body_field, home_label, locale)
-      dir = [locale.url_prefix, dir_for(collection, locale), sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
+    def build_page(site, entry, collection, body_field, home_label, locale, collection_dir)
+      dir = [locale.url_prefix, collection_dir, sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
@@ -201,7 +216,7 @@ module ContentfulJekyll
       page.data["layout"] = collection["layout"]
       page.data["nav"] = true if collection["nav"]
       page.data["home_label"] = home_label if home_label
-      page.data["locale"] = locale.code if locale.url_prefix
+      page.data["locale"] = locale.code unless locale.primary?
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
 
       page
@@ -213,12 +228,17 @@ module ContentfulJekyll
     # locale (e.g. "produkter" vs "products"). Set `dir` to a Hash keyed
     # by locale code for that; anything else (a plain string, including
     # "") is used as-is regardless of locale, exactly as before this was
-    # possible.
+    # possible. Resolved once per collection per locale pass (fetch_collection),
+    # not per entry -- it can't vary within a single pass.
     def dir_for(collection, locale)
       dir = collection["dir"]
       return dir unless dir.is_a?(Hash)
 
-      dir[locale.code] || raise("contentful_collections: dir has no entry for locale #{locale.code.inspect} (content_type: #{collection["content_type"]})")
+      return dir[locale.code] if dir.key?(locale.code)
+
+      raise "contentful_collections: dir is a per-locale Hash (#{dir.inspect}) but has no entry for " \
+            "#{locale.code.inspect} (content_type: #{collection["content_type"]})" \
+            "#{" -- is contentful_locales configured?" if locale.code.nil?}"
     end
 
     # Content editors will eventually type a slug with spaces, capitals, or
