@@ -1,8 +1,8 @@
 {% comment %}
   Only reads fields every page already has (title, url, rendered
   content) or a generic alias set on generated pages (social_image),
-  the same "don't assume a site-specific field name" approach as
-  feed.xml's removal note in CLAUDE.md -- no dependency on a "description"
+  the same "don't assume a site-specific field name" approach as the
+  jekyll-feed removal note in CLAUDE.md -- no dependency on a "description"
   field existing on every content type. page_title/page_lang come from
   default.html (see its comment) rather than being recomputed here.
 {% endcomment %}
