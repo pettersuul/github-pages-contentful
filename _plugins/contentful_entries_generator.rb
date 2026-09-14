@@ -1,4 +1,5 @@
 require "set"
+require "contentful"
 require_relative "contentful_client"
 require_relative "contentful_serializer"
 
@@ -26,7 +27,8 @@ module ContentfulJekyll
         return
       end
 
-      @serializer = EntrySerializer.new(site, fetch_display_fields(client))
+      entry_depth = site.config["contentful_entry_depth"] || EntrySerializer::DEFAULT_ENTRY_DEPTH
+      @serializer = EntrySerializer.new(site, fetch_display_fields(client), entry_depth)
       @built_dirs = Set.new
 
       collections = site.config["contentful_collections"] || []
@@ -67,10 +69,19 @@ module ContentfulJekyll
 
     def fetch_collection(site, client, collection)
       body_field = (collection["body_field"] || "body").to_sym
+      home_label = home_label_for(collection) if collection["home"]
 
       each_entry(client, entries_query(collection)) do |entry|
-        site.pages << build_page(site, entry, collection, body_field)
+        site.pages << build_page(site, entry, collection, body_field, home_label)
       end
+    end
+
+    # A collection's homepage section heading: an explicit `label`, or a
+    # humanized form of its content_type id (e.g. "newsArticle" ->
+    # "News Article") via the same snake_casing contentful.rb itself uses
+    # for field names, rather than the raw id capitalized as-is.
+    def home_label_for(collection)
+      collection["label"] || Contentful::Support.snakify(collection["content_type"]).split("_").map(&:capitalize).join(" ")
     end
 
     # Fetches a content type into site.data.<name> instead of generating a
@@ -112,7 +123,7 @@ module ContentfulJekyll
       end
     end
 
-    def build_page(site, entry, collection, body_field)
+    def build_page(site, entry, collection, body_field, home_label)
       dir = [collection["dir"], sanitized_slug(entry)].compact.reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
@@ -123,6 +134,7 @@ module ContentfulJekyll
       page.content = @serializer.render_body(entry.fields[body_field])
       page.data["layout"] = collection["layout"]
       page.data["nav"] = true if collection["nav"]
+      page.data["home_label"] = home_label if home_label
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
 
       page

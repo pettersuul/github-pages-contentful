@@ -28,11 +28,11 @@ The build reads the `contentful_collections` list in [_config.yml](_config.yml) 
 ```yaml
 contentful_collections:
   - content_type: post
-    layout: post
+    layout: single
     dir: posts
     home: true
   - content_type: page
-    layout: page
+    layout: single
     dir: ""
     nav: true
 ```
@@ -43,9 +43,14 @@ contentful_collections:
 | `layout` | yes | Which layout in [_layouts/](_layouts/) renders the page. |
 | `dir` | yes | URL path prefix; `posts` builds `/posts/<slug>/`, `""` builds pages at the site root (`/<slug>/`). |
 | `nav` | no | `true` lists this collection's pages in the site nav (see `_layouts/default.html`). |
-| `home` | no | `true` lists this collection's pages in a section on the homepage (see `index.html`). Only works with a non-empty `dir` — a no-op on a `dir: ""` collection. |
+| `home` | no | `true` groups this collection's pages into a section on the homepage (see `index.html`). |
+| `label` | no | Homepage section heading for this collection, if `home` is set. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article"). |
 | `order` | no | A [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `fields.publishDate` or `-fields.publishDate`) controlling fetch/display order; defaults to `-sys.updatedAt`. |
 | `body_field` | no | The field to render as page content, if not `body`. A field literally named `content` collides with Jekyll's own reserved `page.content`/`{{ content }}` and is otherwise unreachable, so this is the only way to use such a field as the page body. |
+
+`post` and `page` both use `_layouts/single.html`, a small shared layout (`layout: default` + `{% include article.html %}`) — give a collection its own layout file only once it needs different markup.
+
+A top-level `contentful_entry_depth` setting (default `2`) controls how many levels of linked entries get fully resolved before degrading to a stub — raise it if your content model has deep reference chains (e.g. a menu linking pages that each link their own sub-pages).
 
 Every content type needs a `slug` field and a body field (`body` by default — see `body_field` above); `post` additionally uses `publishDate` for ordering. `title` is never a literal field requirement: it always comes from that content type's Contentful-configured "Entry title" field (set per content type in Contentful's UI), whatever it's actually named — so a content type titled by, say, `headline` or `eventName` works without any template changes.
 

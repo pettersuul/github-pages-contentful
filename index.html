@@ -6,15 +6,13 @@ title: Home
 <h1>{{ site.title }}</h1>
 <p>{{ site.description }}</p>
 
-{% for collection in site.contentful_collections %}
-  {% if collection.home and collection.dir and collection.dir != "" %}
-    {% assign dir_segment = "/" | append: collection.dir | append: "/" %}
-    {% assign collection_pages = site.pages | where_exp: "p", "p.url contains dir_segment" %}
-    <h2>{{ collection.content_type | capitalize }}</h2>
-    <ul>
-      {% for entry in collection_pages %}
-      <li><a href="{{ entry.url | relative_url }}">{{ entry.title }}</a></li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+{% assign home_pages = site.pages | where_exp: "p", "p.home_label" %}
+{% assign home_groups = home_pages | group_by: "home_label" %}
+{% for group in home_groups %}
+  <h2>{{ group.name }}</h2>
+  <ul>
+    {% for entry in group.items %}
+    <li><a href="{{ entry.url | relative_url }}">{{ entry.title }}</a></li>
+    {% endfor %}
+  </ul>
 {% endfor %}

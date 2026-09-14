@@ -12,25 +12,30 @@ plugins:
 # page at /<dir>/<slug>/ (dir: "" means the site root; slug is sanitized
 # into a URL-safe form if needed). Set nav: true on a collection to list
 # its pages in the site nav (see _layouts/default.html), and home: true
-# to list them on the homepage (see index.html; only works with a
-# non-empty dir -- a no-op on a dir: "" collection). Set order to a
-# Contentful CDA order value (e.g. "fields.publishDate" or
-# "-fields.publishDate") to control fetch/display order; defaults to
-# "-sys.updatedAt". Set body_field if the field to render as page content
-# isn't named "body" (e.g. body_field: content) -- note a field named
-# "content" is otherwise unreachable, since it collides with Jekyll's own
-# reserved page.content.
+# to group them into a section on the homepage (see index.html), headed
+# by label if set, else a humanized content_type (e.g. "newsArticle" ->
+# "News Article"). Set order to a Contentful CDA order value (e.g.
+# "fields.publishDate" or "-fields.publishDate") to control fetch/display
+# order; defaults to "-sys.updatedAt". Set body_field if the field to
+# render as page content isn't named "body" (e.g. body_field: content) --
+# note a field named "content" is otherwise unreachable, since it
+# collides with Jekyll's own reserved page.content.
 # Add or remove collections here to adapt this template to a new site
 # without touching the generator plugin.
 contentful_collections:
   - content_type: post
-    layout: post
+    layout: single
     dir: posts
     home: true
   - content_type: page
-    layout: page
+    layout: single
     dir: ""
     nav: true
+
+# Optional: how deep a linked entry's own fields get flattened before
+# falling back to an {id, link_type} stub, to bound build output on
+# heavily cross-referenced content models. Defaults to 2 if unset.
+# contentful_entry_depth: 2
 
 # Content types fetched into site.data.<name> instead of generated pages --
 # for entries that are only ever linked to from other entries (e.g. authors,

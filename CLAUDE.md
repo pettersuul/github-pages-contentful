@@ -39,7 +39,7 @@ Set `CONTENTFUL_PREVIEW=true` to build against draft content instead of only pub
 3. For each entry in `contentful_collections`, fetch its entries and turn each into a `Jekyll::PageWithoutAFile` at `/<dir>/<slug>/` (`dir: ""` → site root). There are no files on disk for individual entries — they only exist as generated pages during a build.
 4. For each entry in `contentful_data_collections`, fetch its entries into `site.data.<name>` instead (see "Data-only collections" below).
 
-To add a new content type, add a `contentful_collections` entry and a matching layout in `_layouts/` — no Ruby changes needed. A `contentful_collections` entry supports:
+To add a new content type, add a `contentful_collections` entry and a matching layout in `_layouts/` — no Ruby changes needed. The default `post` and `page` collections both point at `_layouts/single.html` (`layout: default` + `{% include article.html %}`) since they render identically; give a new collection its own layout file only once it actually needs different markup. A `contentful_collections` entry supports:
 
 | Key | Required | Meaning |
 | --- | --- | --- |
@@ -47,9 +47,12 @@ To add a new content type, add a `contentful_collections` entry and a matching l
 | `layout` | yes | Which layout renders the page. |
 | `dir` | yes | URL path prefix (`dir: ""` → site root). |
 | `nav` | no | `true` lists this collection's pages in the site nav (see "Homepage & navigation"). |
-| `home` | no | `true` lists this collection's pages in a homepage section. No-op on a `dir: ""` collection. |
+| `home` | no | `true` groups this collection's pages into a homepage section (see "Homepage & navigation"). |
+| `label` | no | Homepage section heading for this collection, if `home` is set. Defaults to a humanized `content_type` (e.g. `newsArticle` → "News Article"). |
 | `order` | no | A raw [Contentful CDA order value](https://www.contentful.com/developers/docs/references/content-delivery-api/#/reference/search-parameters/order) (e.g. `-fields.publishDate`); defaults to `-sys.updatedAt`. |
-| `body_field` | no | Which field to render as page content, if not `body` (see "Body field" below). |
+| `body_field` | no | Which field to render as page content, if not `body` (see "Content type conventions" below). |
+
+A top-level `contentful_entry_depth` setting (default 2) controls how deep linked entries get flattened before degrading to a stub — see "Field exposure" below.
 
 Entries are fetched with `include: 10` (resolves up to 10 levels of linked entries — required for the linked-entry flattening described below) and paginated in `MAX_PAGE_SIZE`-sized (1000, the CDA's hard limit) requests until exhausted, via the shared `each_page` loop, so content types with more entries than one page are no longer silently truncated. `each_page` is generic over any Contentful CDA list endpoint (entries, content types, ...), since `Contentful::Array#next_page` dispatches by the resource's own type.
 
@@ -66,7 +69,7 @@ The default `post` collection additionally uses `publishDate` for ordering and d
 
 A content type's body field (or any linked entry's Rich Text field — see "Known gap" below) can be a Contentful Rich Text document, rendered to HTML via the `rich_text_renderer` gem through `RICH_TEXT_MAPPINGS`. Checked against the canonical `BLOCKS`/`INLINES`/`MARKS` lists in `@contentful/rich-text-types`, the gem's own defaults cover everything except three node/mark types, which this file adds:
 
-- **`embedded-entry-block`/`embedded-entry-inline`** — render as the linked entry's `title`/`name` field, wrapped in `<div class="embedded-entry">`/`<span class="embedded-entry">`.
+- **`embedded-entry-block`/`embedded-entry-inline`** — render as the linked entry's title (same displayField-driven resolution as everywhere else — see "Content type conventions" — threaded in via a `display_fields` key merged into the mappings Hash the gem passes to every renderer it instantiates, since this file has no direct dependency on `EntrySerializer`; falls back to a literal `title`/`name` field if that key isn't present), wrapped in `<div class="embedded-entry">`/`<span class="embedded-entry">`.
 - **`strikethrough`** — a standard Contentful Rich Text mark, otherwise missing from the gem entirely and fatal the first time real content uses it. Renders as `<s>`.
 - **`entry-hyperlink`/`resource-hyperlink`** — linking text to a Contentful entry (as opposed to `hyperlink`'s external URL). Renders as `<span class="entry-hyperlink">` with no `href`, since resolving the linked entry's actual generated page URL isn't possible from inside the Rich Text renderer — it has no knowledge of this site's URL scheme.
 
@@ -78,17 +81,17 @@ A content type's body field (or any linked entry's Rich Text field — see "Know
 
 - **Assets** (`Contentful::Asset`) → `{ "url", "content_type", "title", "description" }`, with `url` rewritten from Contentful's protocol-relative form (`//images.ctfassets.net/...`) to an absolute `https://` URL. Use as `<img src="{{ page.cover_image.url }}">`.
 - **Linked entries** (`Contentful::Entry`, e.g. a reference field like `author`) → the linked entry's own fields, flattened the same way as `page.data` (so `{{ page.author.title }}` works directly), plus `id` and `content_type`. Memoized per `(entry id, depth)` and frozen — the same entry can be linked from many pages (e.g. a shared "author"), so it's flattened once and the resulting Hash shared by reference; freezing makes "nothing downstream mutates it" an enforced invariant rather than an assumption.
-- **Depth capping**: recurses up to `MAX_ENTRY_DEPTH` (2) levels to bound build output on heavily cross-referenced content models — reconstructing a nested tree from Contentful's flat, deduplicated `includes` list means a shared reference gets fully duplicated per occurrence in the output, so uncapped recursion risks real bloat on content models with wide fan-out (e.g. "related posts"). Beyond that depth, and for any link Contentful didn't resolve at all, an entry degrades to `{ "id", "link_type" }` — the same shape as an unresolved `Contentful::Link` stub.
+- **Depth capping**: recurses up to `contentful_entry_depth` levels (default `EntrySerializer::DEFAULT_ENTRY_DEPTH`, 2) to bound build output on heavily cross-referenced content models — reconstructing a nested tree from Contentful's flat, deduplicated `includes` list means a shared reference gets fully duplicated per occurrence in the output, so uncapped recursion risks real bloat on content models with wide fan-out (e.g. "related posts"). Beyond that depth, and for any link Contentful didn't resolve at all, an entry degrades to `{ "id", "link_type" }` — the same shape as an unresolved `Contentful::Link` stub. A real site was found needing depth 3 (a `menu` entry linking `page`s which each link their own `subpages`) — raise `contentful_entry_depth` in `_config.yml` for content models with chains like this.
 - **Known gap**: this Hash-flattening does not run the Rich Text rendering described above — a linked entry's own Rich Text field (e.g. `page.author.bio`) arrives as the raw string-keyed Rich Text Hash, and any assets/entries embedded inside it remain live, unserialized SDK objects. Only a page's own top-level body field is pre-rendered.
 
 This mirrors how Contentful's own [jekyll-contentful-data-import](https://github.com/contentful/jekyll-contentful-data-import) plugin maps `Contentful::Asset`/`Contentful::Entry`/`Contentful::Link` values (`lib/jekyll-contentful-data-import/mappers/base.rb`), scoped down to just what this template needs (no multi-locale support, no custom per-content-type mappers).
 
 ### Homepage & navigation
 
-- **`index.html`** lists generated pages by iterating `contentful_collections` from `_config.yml` and, for each collection with `home: true` and a non-empty `dir`, filtering `site.pages` for URLs under `/<dir>/`.
+- **`index.html`** groups generated pages into homepage sections via `page.data["home_label"]`, which `build_page` sets (once per collection, to `label` or a humanized `content_type`) whenever a collection has `home: true`. The template filters `site.pages` for a truthy `home_label` and groups by it (Liquid's `group_by`) — no per-collection loop, no dependence on `dir`.
 - **`_layouts/default.html`** builds a nav from every generated page whose collection has `nav: true` set in `_config.yml` (the generator copies that onto `page.data["nav"]`), sorted by title.
 
-Both flags are independent and collection-level, not tied to layout or `dir` shape — a collection can be in the nav, the homepage, both, or neither.
+Both flags are independent, collection-level, and driven entirely by data set on the page itself (`home_label`, `nav`) rather than by inspecting a page's URL or layout — a collection can be in the nav, the homepage, both, or neither, regardless of its `dir`.
 
 ### Data-only collections
 

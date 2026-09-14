@@ -3,8 +3,8 @@ require "rich_text_renderer"
 
 module ContentfulJekyll
   # Renders an embedded entry (block or inline) inside a Rich Text field as
-  # its title/name, since the template can't know a site's content model or
-  # CSS in advance. Sites that want richer embeds can swap this out.
+  # its title, since the template can't know a site's content model or CSS
+  # in advance. Sites that want richer embeds can swap this out.
   class EmbeddedEntryBlockRenderer < RichTextRenderer::BaseNodeRenderer
     def render(node)
       wrap("div", node)
@@ -16,10 +16,24 @@ module ContentfulJekyll
       entry = node["data"]["target"]
       return "" unless entry.respond_to?(:fields)
 
-      title = entry.fields[:title] || entry.fields[:name]
+      title = title_for(entry)
       return "" if title.nil?
 
       "<#{tag} class=\"embedded-entry\">#{CGI.escapeHTML(title.to_s)}</#{tag}>"
+    end
+
+    # Same displayField-driven title resolution as EntrySerializer#flatten_fields
+    # (this file has no direct dependency on that class -- the display-field
+    # map is threaded through via `mappings`, the same Hash the gem already
+    # passes to every renderer it instantiates -- see EntrySerializer#rich_text_renderer).
+    # Falls back to a literal `title`/`name` field if display_fields wasn't
+    # provided (e.g. a site overriding RICH_TEXT_MAPPINGS without it).
+    def title_for(entry)
+      display_fields = mappings[:display_fields]
+      display_field = display_fields && display_fields[entry.sys[:content_type]&.id]
+      return entry.fields[display_field.to_sym] if display_field
+
+      entry.fields[:title] || entry.fields[:name]
     end
   end
 

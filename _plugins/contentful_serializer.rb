@@ -10,17 +10,19 @@ module ContentfulJekyll
   # collection entry -- kept separate from EntriesGenerator's Jekyll build
   # lifecycle (fetching pages, writing warnings) for that reason.
   class EntrySerializer
-    # How deep a linked entry's own fields get flattened before falling
-    # back to an {id, link_type} stub, to bound build output on heavily
-    # cross-referenced content models (see CLAUDE.md).
-    MAX_ENTRY_DEPTH = 2
+    # Default for how deep a linked entry's own fields get flattened before
+    # falling back to an {id, link_type} stub, to bound build output on
+    # heavily cross-referenced content models -- overridable per site via
+    # _config.yml's contentful_entry_depth (see CLAUDE.md).
+    DEFAULT_ENTRY_DEPTH = 2
 
     # display_fields maps content_type id -> snake_cased field name of
     # that content type's Contentful "Entry title" setting (its
     # displayField) -- see #flatten_fields.
-    def initialize(site, display_fields)
+    def initialize(site, display_fields, max_entry_depth = DEFAULT_ENTRY_DEPTH)
       @site = site
       @display_fields = display_fields
+      @max_entry_depth = max_entry_depth
       @entry_cache = {}
     end
 
@@ -85,7 +87,7 @@ module ContentfulJekyll
       when Contentful::Asset
         serialize_asset(value)
       when Contentful::Entry
-        depth >= MAX_ENTRY_DEPTH ? reference_stub(value.sys[:id], "Entry") : serialize_entry(value, depth)
+        depth >= @max_entry_depth ? reference_stub(value.sys[:id], "Entry") : serialize_entry(value, depth)
       when Contentful::Link
         reference_stub(value.id, value.link_type)
       when Array
@@ -116,7 +118,7 @@ module ContentfulJekyll
     end
 
     def rich_text_renderer
-      @rich_text_renderer ||= RichTextRenderer::Renderer.new(RICH_TEXT_MAPPINGS)
+      @rich_text_renderer ||= RichTextRenderer::Renderer.new(RICH_TEXT_MAPPINGS.merge(display_fields: @display_fields))
     end
 
     def markdown_converter
