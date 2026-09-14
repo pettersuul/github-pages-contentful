@@ -104,23 +104,29 @@ module ContentfulJekyll
     # `file.url` is a genuinely undefined method, not nil; `file&.url`
     # doesn't help since `&.` only guards a nil receiver, not an undefined
     # method on a real one. Confirmed via a synthetic Contentful::File
-    # missing #url: raises NoMethodError, doesn't return nil.
+    # missing #url: raises NoMethodError, doesn't return nil. #safe_field
+    # centralizes that guard for every dynamically-defined Contentful::File
+    # method this reads.
     def serialize_asset(asset)
       file = asset.fields[:file]
-      url = file.respond_to?(:url) ? file.url : nil
+      url = safe_field(file, :url)
       # `details` is a plain parsed-JSON Hash (string keys), not another
       # dynamic contentful.rb object -- `["image"]` is nil, not an error,
       # for a non-image asset (a PDF, say) or one still processing.
-      image_details = file.respond_to?(:details) ? file.details["image"] : nil
+      image_details = safe_field(file, :details)&.[]("image")
 
       {
         "url" => url.nil? ? nil : absolute_url(url),
-        "content_type" => file.respond_to?(:content_type) ? file.content_type : nil,
+        "content_type" => safe_field(file, :content_type),
         "title" => asset.fields[:title],
         "description" => asset.fields[:description],
         "width" => image_details && image_details["width"],
         "height" => image_details && image_details["height"]
       }
+    end
+
+    def safe_field(object, method)
+      object.respond_to?(method) ? object.public_send(method) : nil
     end
 
     def reference_stub(id, link_type)

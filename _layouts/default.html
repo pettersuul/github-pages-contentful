@@ -1,9 +1,18 @@
 <!doctype html>
-<html lang="{{ page.locale | default: site.lang | default: "en" }}">
+{% comment %}
+  page_title/page_lang are assigned here, not recomputed in seo.html, so
+  <title>/<html lang> and seo.html's og:title/og:locale can't silently
+  drift out of sync with each other -- confirmed Jekyll's Liquid shares
+  assign-scope between an includer and its {% include %} (a plain local
+  variable, unlike the "content" special variable seo.html also reads).
+{% endcomment %}
+{% assign page_title = page.title | default: site.title %}
+{% assign page_lang = page.locale | default: site.lang | default: "en" %}
+<html lang="{{ page_lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ page.title | default: site.title }}</title>
+  <title>{{ page_title }}</title>
   {% include seo.html %}
 </head>
 <body>

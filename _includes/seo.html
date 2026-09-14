@@ -3,18 +3,20 @@
   content) or a generic alias set on generated pages (social_image),
   the same "don't assume a site-specific field name" approach as
   feed.xml's removal note in CLAUDE.md -- no dependency on a "description"
-  field existing on every content type.
+  field existing on every content type. page_title/page_lang come from
+  default.html (see its comment) rather than being recomputed here.
 {% endcomment %}
-{% assign meta_title = page.title | default: site.title %}
 {% assign meta_description = page.description | default: content | strip_html | normalize_whitespace | truncate: 160 %}
-{% assign og_locale = page.locale | default: site.lang | replace: "-", "_" %}
+{% assign has_description = meta_description != blank %}
+{% assign og_locale = page_lang | replace: "-", "_" %}
+{% assign social_image_url = page.social_image.url %}
 
 <link rel="canonical" href="{{ page.url | absolute_url }}">
-{% if meta_description and meta_description != "" %}
+{% if has_description %}
 <meta name="description" content="{{ meta_description | escape }}">
 {% endif %}
 
-<meta property="og:title" content="{{ meta_title | escape }}">
+<meta property="og:title" content="{{ page_title | escape }}">
 <meta property="og:type" content="{% if page.home_label %}article{% else %}website{% endif %}">
 <meta property="og:url" content="{{ page.url | absolute_url }}">
 {% if site.title %}
@@ -23,18 +25,18 @@
 {% if og_locale %}
 <meta property="og:locale" content="{{ og_locale }}">
 {% endif %}
-{% if meta_description and meta_description != "" %}
+{% if has_description %}
 <meta property="og:description" content="{{ meta_description | escape }}">
 {% endif %}
-{% if page.social_image.url %}
-<meta property="og:image" content="{{ page.social_image.url }}">
+{% if social_image_url %}
+<meta property="og:image" content="{{ social_image_url }}">
 {% endif %}
 
-<meta name="twitter:card" content="{% if page.social_image.url %}summary_large_image{% else %}summary{% endif %}">
-<meta name="twitter:title" content="{{ meta_title | escape }}">
-{% if meta_description and meta_description != "" %}
+<meta name="twitter:card" content="{% if social_image_url %}summary_large_image{% else %}summary{% endif %}">
+<meta name="twitter:title" content="{{ page_title | escape }}">
+{% if has_description %}
 <meta name="twitter:description" content="{{ meta_description | escape }}">
 {% endif %}
-{% if page.social_image.url %}
-<meta name="twitter:image" content="{{ page.social_image.url }}">
+{% if social_image_url %}
+<meta name="twitter:image" content="{{ social_image_url }}">
 {% endif %}

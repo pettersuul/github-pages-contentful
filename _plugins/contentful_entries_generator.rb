@@ -21,6 +21,14 @@ module ContentfulJekyll
     MAX_PAGE_SIZE = 1000
     INCLUDE_DEPTH = 10
 
+    # Everything about one contentful_collections entry that's constant
+    # across every entry in it for a given locale pass -- computed once in
+    # fetch_collection (same reasoning as body_field/home_label/dir being
+    # hoisted out of the per-entry loop already) and passed as one object
+    # to build_page instead of growing that method's positional params by
+    # one every time a new per-collection setting is added.
+    CollectionContext = Struct.new(:collection, :locale, :body_field, :home_label, :dir, :image_field, keyword_init: true)
+
     def generate(site)
       client = ContentfulClient.build
 
@@ -91,12 +99,17 @@ module ContentfulJekyll
     end
 
     def fetch_collection(site, client, collection, locale)
-      body_field = (collection["body_field"] || "body").to_sym
-      home_label = home_label_for(collection, locale) if collection["home"]
-      collection_dir = ContentfulJekyll.dir_for(collection, locale)
+      context = CollectionContext.new(
+        collection: collection,
+        locale: locale,
+        body_field: (collection["body_field"] || "body").to_sym,
+        home_label: (home_label_for(collection, locale) if collection["home"]),
+        dir: ContentfulJekyll.dir_for(collection, locale),
+        image_field: collection["image_field"] || "image"
+      )
 
       each_entry(client, entries_query(collection, locale)) do |entry|
-        site.pages << build_page(site, entry, collection, body_field, home_label, locale, collection_dir)
+        site.pages << build_page(site, entry, context)
       end
     end
 
@@ -156,27 +169,27 @@ module ContentfulJekyll
       end
     end
 
-    def build_page(site, entry, collection, body_field, home_label, locale, collection_dir)
-      dir = [locale.url_prefix, collection_dir, sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
+    def build_page(site, entry, context)
+      dir = [context.locale.url_prefix, context.dir, sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
       page = Jekyll::PageWithoutAFile.new(site, site.source, dir, "index.html")
 
       unless @built_dirs.add?(page.url)
         Jekyll.logger.warn LOG_TAG, "multiple entries (or an existing site file) produced the URL \"#{page.url}\" (entry #{entry.sys[:id]} included) -- only the last one written will survive in the build output"
       end
 
-      page.content = @serializer.render_body(entry.fields[body_field])
-      page.data["layout"] = collection["layout"]
-      page.data["nav"] = true if collection["nav"]
-      page.data["home_label"] = home_label if home_label
-      page.data["locale"] = locale.code unless locale.primary?
-      page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
+      page.content = @serializer.render_body(entry.fields[context.body_field])
+      page.data["layout"] = context.collection["layout"]
+      page.data["nav"] = true if context.collection["nav"]
+      page.data["home_label"] = context.home_label if context.home_label
+      page.data["locale"] = context.locale.code unless context.locale.primary?
+      page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [context.body_field]))
       # A generic alias for whatever field holds this collection's social
       # preview image (Open Graph/Twitter Card, see _includes/seo.html),
       # since content types name it differently ("coverImage", "image",
       # "contentImage", ...) -- same body_field/image_field pattern.
       # Defaults to trying "image" (a common convention); harmless if no
       # such field exists (just nil, same as any other absent field).
-      page.data["social_image"] = page.data[collection["image_field"] || "image"]
+      page.data["social_image"] = page.data[context.image_field]
 
       page
     end
