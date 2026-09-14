@@ -43,10 +43,25 @@ module ContentfulJekyll
     end
   end
 
+  # "entry-hyperlink" (link text to a Contentful entry, as opposed to
+  # "hyperlink"'s external URL) and "resource-hyperlink" (the same, for a
+  # cross-space entry) are both unmapped by rich_text_renderer. Resolving
+  # the linked entry's actual generated page URL isn't possible from
+  # here -- this renderer has no knowledge of this site's URL scheme --
+  # so the link text renders without a working href rather than crashing
+  # the build. Sites that need the real link should override this mapping.
+  class EntryHyperlinkRenderer < RichTextRenderer::BaseBlockRenderer
+    def render(node)
+      "<span class=\"entry-hyperlink\">#{render_content(node)}</span>"
+    end
+  end
+
   RICH_TEXT_MAPPINGS = {
     "embedded-entry-block" => EmbeddedEntryBlockRenderer,
     "embedded-entry-inline" => EmbeddedEntryInlineRenderer,
-    "strikethrough" => StrikethroughRenderer
+    "strikethrough" => StrikethroughRenderer,
+    "entry-hyperlink" => EntryHyperlinkRenderer,
+    "resource-hyperlink" => EntryHyperlinkRenderer
   }.freeze
 
   class EntriesGenerator < Jekyll::Generator
