@@ -37,6 +37,19 @@ contentful_collections:
 # heavily cross-referenced content models. Defaults to 2 if unset.
 # contentful_entry_depth: 2
 
+# Optional: build every collection/data collection once per locale.
+# Omit entirely (or list a single locale) for a single-locale site --
+# every query, URL, and site.data key is then identical to not having
+# this setting at all. With 2+ locales, the first is the primary locale
+# (unprefixed URLs, e.g. /products/vin/, and unsuffixed site.data keys);
+# every other locale gets its own /<locale>/... URL prefix (e.g.
+# /nb-NO/products/vin/) and a site.data.<name>_<locale> key (e.g.
+# site.data.authors_nb_no). Locale codes are whatever Contentful uses
+# for that space (Settings > Locales).
+# contentful_locales:
+#   - en-US
+#   - nb-NO
+
 # Content types fetched into site.data.<name> instead of generated pages --
 # for entries that are only ever linked to from other entries (e.g. authors,
 # manufacturers) and have no page of their own.

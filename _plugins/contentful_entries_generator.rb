@@ -18,6 +18,13 @@ module ContentfulJekyll
     MAX_PAGE_SIZE = 1000
     INCLUDE_DEPTH = 10
 
+    # code: the Contentful locale code to query (nil -> no `locale` param at
+    # all, letting the CDA fall back to the space's own default locale --
+    # the single-locale/legacy path). url_prefix/data_suffix: nil for the
+    # primary locale (today's exact URLs and site.data keys, unprefixed),
+    # or the locale code for every other configured locale. See #each_locale.
+    Locale = Struct.new(:code, :url_prefix, :data_suffix)
+
     def generate(site)
       client = ContentfulClient.build
 
@@ -27,25 +34,53 @@ module ContentfulJekyll
         return
       end
 
+      display_fields = fetch_display_fields(client)
       entry_depth = site.config["contentful_entry_depth"] || EntrySerializer::DEFAULT_ENTRY_DEPTH
-      @serializer = EntrySerializer.new(site, fetch_display_fields(client), entry_depth)
       @built_dirs = Set.new
 
       collections = site.config["contentful_collections"] || []
-      collections.each { |collection| fetch_collection(site, client, collection) }
-
       data_collections = site.config["contentful_data_collections"] || []
-      data_collections.each { |collection| fetch_data_collection(site, client, collection) }
+
+      each_locale(site) do |locale|
+        # A fresh EntrySerializer per locale, so its entry-memoization cache
+        # never mixes up the same Contentful entry's differently-translated
+        # field values across locales.
+        @serializer = EntrySerializer.new(site, display_fields, entry_depth)
+
+        collections.each { |collection| fetch_collection(site, client, collection, locale) }
+        data_collections.each { |collection| fetch_data_collection(site, client, collection, locale) }
+      end
     end
 
     private
+
+    # Yields one Locale per entry in contentful_locales, first = primary
+    # (unprefixed URLs/site.data keys, no page.data["locale"]), the rest
+    # prefixed with their own code. When contentful_locales is unset or has
+    # only one entry, yields a single Locale.new(nil, nil, nil) -- every
+    # query, URL, and site.data key this produces is byte-identical to a
+    # build with no locale support at all.
+    def each_locale(site)
+      configured = site.config["contentful_locales"]
+
+      if configured.nil? || configured.size <= 1
+        yield Locale.new(nil, nil, nil)
+        return
+      end
+
+      configured.each_with_index do |code, index|
+        yield index.zero? ? Locale.new(code, nil, nil) : Locale.new(code, code, code.downcase.tr("-", "_"))
+      end
+    end
 
     # Maps content_type id -> snake_cased field name of Contentful's own
     # "Entry title" setting (a content type's displayField), passed to
     # EntrySerializer so page.title (and a linked/data-collection entry's
     # own "title") always comes from that field, whatever it's actually
     # named (e.g. `headline` or `eventName`) -- there's no need for a
-    # content type to have a field literally called `title`.
+    # content type to have a field literally called `title`. Content type
+    # schemas (including displayField) aren't locale-specific, so this is
+    # fetched once, not per locale.
     def fetch_display_fields(client)
       fields = {}
 
@@ -58,21 +93,23 @@ module ContentfulJekyll
       fields
     end
 
-    def entries_query(collection)
-      {
+    def entries_query(collection, locale)
+      query = {
         content_type: collection["content_type"],
         order: collection["order"] || "-sys.updatedAt",
         include: INCLUDE_DEPTH,
         limit: MAX_PAGE_SIZE
       }
+      query[:locale] = locale.code if locale.code
+      query
     end
 
-    def fetch_collection(site, client, collection)
+    def fetch_collection(site, client, collection, locale)
       body_field = (collection["body_field"] || "body").to_sym
       home_label = home_label_for(collection) if collection["home"]
 
-      each_entry(client, entries_query(collection)) do |entry|
-        site.pages << build_page(site, entry, collection, body_field, home_label)
+      each_entry(client, entries_query(collection, locale)) do |entry|
+        site.pages << build_page(site, entry, collection, body_field, home_label, locale)
       end
     end
 
@@ -87,8 +124,8 @@ module ContentfulJekyll
     # Fetches a content type into site.data.<name> instead of generating a
     # page per entry -- for entries that are only ever linked to from other
     # entries (e.g. authors, manufacturers) and have no page of their own.
-    def fetch_data_collection(site, client, collection)
-      name = collection["name"]
+    def fetch_data_collection(site, client, collection, locale)
+      name = [collection["name"], locale.data_suffix].compact.join("_")
 
       if site.data.key?(name)
         Jekyll.logger.warn "Contentful:", "site.data.#{name} already exists (e.g. from a _data/#{name}.* file) and will be overwritten by the '#{collection["content_type"]}' data collection"
@@ -96,7 +133,7 @@ module ContentfulJekyll
 
       entries = []
 
-      each_entry(client, entries_query(collection)) do |entry|
+      each_entry(client, entries_query(collection, locale)) do |entry|
         entries << @serializer.serialize_entry(entry, 0)
       end
 
@@ -123,8 +160,8 @@ module ContentfulJekyll
       end
     end
 
-    def build_page(site, entry, collection, body_field, home_label)
-      dir = [collection["dir"], sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
+    def build_page(site, entry, collection, body_field, home_label, locale)
+      dir = [locale.url_prefix, collection["dir"], sanitized_slug(entry)].reject { |part| part.to_s.empty? }.join("/")
 
       unless @built_dirs.add?(dir)
         Jekyll.logger.warn "Contentful:", "multiple entries produced the URL \"/#{dir}/\" (entry #{entry.sys[:id]} included) -- only the last one fetched will survive in the build output"
@@ -135,6 +172,7 @@ module ContentfulJekyll
       page.data["layout"] = collection["layout"]
       page.data["nav"] = true if collection["nav"]
       page.data["home_label"] = home_label if home_label
+      page.data["locale"] = locale.code if locale.url_prefix
       page.data.merge!(@serializer.flatten_fields(entry, 0, skip: [body_field]))
 
       page

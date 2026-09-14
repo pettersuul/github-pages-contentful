@@ -80,6 +80,18 @@ contentful_data_collections:
     name: authors
 ```
 
+### Locales
+
+For a single-locale site, do nothing — there's no locale-related config at all by default. To build a translated site, list the Contentful locale codes to build (Contentful: Settings → Locales) under `contentful_locales`, first = primary:
+
+```yaml
+contentful_locales:
+  - en-US
+  - nb-NO
+```
+
+The primary locale's URLs and `site.data` keys are unprefixed, exactly as if `contentful_locales` weren't set at all — adding a second locale to an existing single-locale site never changes its existing URLs. Every other locale gets its own `/<locale>/...` URL prefix (`/nb-NO/products/vin/`) and its own suffixed `site.data.<name>_<locale>` key (`site.data.authors_nb_no`), fetched and rendered entirely separately — a linked entry resolves to that locale's own translated fields, not the primary locale's. The homepage (`index.html`) only ever shows the primary locale's content; a fully localized homepage needs its own `index.html` per locale (e.g. `nb-NO/index.html`), following the same pattern. The nav in `_layouts/default.html` automatically scopes itself to whichever locale the page currently being rendered belongs to.
+
 ## Using this repo as a template
 
 This repo is a GitHub template repo. To start a new site from it:
